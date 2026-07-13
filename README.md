@@ -119,6 +119,10 @@ npm run build-win
 - 点击任务左侧圆形按钮切换完成状态
 - 任务卡片右侧"改"/"删"按钮用于编辑和删除
 
+## 下载
+
+- **macOS Apple Silicon**: [voice-todo-float-1.0.0-aarch64.dmg](https://github.com/young920/voice-todo-float/releases/download/v1.0.0/voice-todo-float-1.0.0-aarch64.dmg)
+
 ## 打包与发布
 
 仓库已配置 GitHub Actions，推送 `main` 分支后自动构建 macOS 与 Windows 安装包。手动发布：

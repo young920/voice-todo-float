@@ -1,0 +1,10 @@
+{
+  "$schema": "https://schema.tauri.app/config/2.0.0",
+  "identifier": "default",
+  "description": "Default capabilities for the todo widget",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "opener:allow-open-url"
+  ]
+}

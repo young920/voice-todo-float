@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>一纸待办</title>
+<style>
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+:root {
+  --paper: #f7f4ed;
+  --paper-light: #faf8f3;
+  --paper-dark: #e8e2d5;
+  --ink: #2c2c2c;
+  --ink-light: #5a5a5a;
+  --ink-muted: #999999;
+  --cinnabar: #b83d2f;
+  --cinnabar-light: #f5e8e6;
+  --gold: #c9a961;
+  --border: #e0d9cc;
+  --border-light: #efe9dd;
+  --shadow: 0 2px 12px rgba(0,0,0,0.06);
+  --radius: 3px;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'PingFang SC', 'Noto Serif SC', 'Songti SC', serif;
+  background: var(--paper);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+  width: 100vw;
+  height: 100vh;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 24px,
+    rgba(0,0,0,0.015) 24px,
+    rgba(0,0,0,0.015) 25px
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+
+.window {
+  width: 100%;
+  height: 100%;
+  background: var(--paper);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+
+.window.collapsed .tab-bar,
+.window.collapsed .search-panel,
+.window.collapsed .content {
+  display: none;
+}
+
+.window.collapsed .title-bar {
+  border-bottom: none;
+  background: rgba(255,255,255,0.7);
+}
+
+.window.collapsed {
+  border-radius: var(--radius);
+}
+
+.window::after {
+  content: '';
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  border: 1px solid rgba(184, 61, 47, 0.12);
+  border-radius: var(--radius);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.title-bar {
+  height: 52px;
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  background: rgba(255,255,255,0.4);
+  border-bottom: 1px solid var(--border);
+  position: relative;
+  z-index: 2;
+}
+
+.title-bar .drag-region {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  align-items: center;
+}
+
+.title-bar .title {
+  font-family: 'Noto Serif SC', 'Songti SC', serif;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--cinnabar);
+  letter-spacing: 0.12em;
+}
+
+.title-bar .title::before {
+  content: '◆';
+  margin-right: 10px;
+  color: var(--cinnabar);
+  font-size: 9px;
+  vertical-align: middle;
+}
+
+.window-controls {
+  display: flex;
+  gap: 10px;
+}
+
+.window-btn {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--ink-light);
+  font-size: 11px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.window-btn:hover {
+  border-color: var(--cinnabar);
+  color: var(--cinnabar);
+}
+
+.window-btn.active {
+  border-color: var(--cinnabar);
+  color: var(--cinnabar);
+}
+
+.tab-bar {
+  display: flex;
+  padding: 12px 20px 0;
+  gap: 16px;
+  border-bottom: 1px solid var(--border-light);
+  background: rgba(255,255,255,0.3);
+  position: relative;
+  z-index: 2;
+  justify-content: space-between;
+}
+
+.tab-bar::-webkit-scrollbar { display: none; }
+
+.tab {
+  padding: 8px 4px;
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--ink-light);
+  cursor: pointer;
+  position: relative;
+  transition: color 0.2s;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.tab:hover { color: var(--ink); }
+
+.tab.active {
+  color: var(--cinnabar);
+  font-weight: 600;
+}
+
+.tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--cinnabar);
+  border-radius: 1px;
+}
+
+.badge {
+  font-size: 11px;
+  color: var(--ink-muted);
+  margin-left: 4px;
+  font-weight: 400;
+}
+
+.search-panel {
+  display: none;
+  padding: 12px 20px;
+  background: rgba(255,255,255,0.45);
+  border-bottom: 1px solid var(--border-light);
+  position: relative;
+  z-index: 2;
+}
+
+.search-panel.show { display: block; }
+
+.search-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.search-row:last-child { margin-bottom: 0; }
+
+.search-input,
+.search-select,
+.search-date {
+  box-sizing: border-box;
+  height: 30px;
+  min-height: 30px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  background: rgba(255,255,255,0.85);
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1;
+  outline: none;
+  transition: border-color 0.2s;
+  display: inline-flex;
+  align-items: center;
+}
+
+.search-input:focus,
+.search-select:focus,
+.search-date:focus { border-color: var(--cinnabar); }
+
+.search-input { flex: 1; min-width: 0; }
+.search-select { width: 64px; cursor: pointer; }
+.search-date { flex: 1; min-width: 0; }
+
+.search-label {
+  width: 32px;
+  font-size: 11px;
+  color: var(--ink-light);
+  flex-shrink: 0;
+  letter-spacing: 0.04em;
+  line-height: 30px;
+  align-self: center;
+}
+
+.search-sep {
+  font-size: 11px;
+  color: var(--ink-muted);
+  flex-shrink: 0;
+  line-height: 30px;
+  align-self: center;
+}
+
+.search-clear {
+  box-sizing: border-box;
+  height: 30px;
+  min-height: 30px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  background: rgba(255,255,255,0.8);
+  color: var(--ink-light);
+  font-size: 11px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+  line-height: 1;
+}
+
+.search-clear:hover {
+  border-color: var(--cinnabar);
+  color: var(--cinnabar);
+  background: var(--cinnabar-light);
+}
+
+.content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 24px 24px;
+  position: relative;
+  z-index: 2;
+}
+
+.content::-webkit-scrollbar { width: 4px; }
+.content::-webkit-scrollbar-track { background: transparent; }
+.content::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+.task-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.task-item {
+  background: rgba(255,255,255,0.7);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  position: relative;
+}
+
+.task-item:hover {
+  background: rgba(255,255,255,0.95);
+  border-color: var(--border);
+  box-shadow: var(--shadow);
+  transform: translateY(-1px);
+}
+
+.task-item.is-adding {
+  background: rgba(255,255,255,0.95);
+  border-color: rgba(184, 61, 47, 0.25);
+}
+
+.task-item.completed .task-title {
+  text-decoration: line-through;
+  color: var(--ink-muted);
+}
+
+.checkbox {
+  width: 18px;
+  height: 18px;
+  min-width: 18px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border);
+  margin-top: 2px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  background: transparent;
+}
+
+.checkbox:hover { border-color: var(--cinnabar); }
+
+.checkbox.checked {
+  background: var(--cinnabar);
+  border-color: var(--cinnabar);
+}
+
+.checkbox svg {
+  display: none;
+  width: 9px;
+  height: 9px;
+  stroke: #fff;
+  fill: none;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.checkbox.checked svg { display: block; }
+
+.task-content {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.task-title {
+  font-size: 15px;
+  font-weight: 400;
+  color: var(--ink);
+  line-height: 1.5;
+  letter-spacing: 0.02em;
+  word-break: break-word;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.task-meta {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+.task-tag {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 2px;
+  letter-spacing: 0.04em;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.task-tag::before {
+  content: '';
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.6;
+}
+
+.tag-pending { background: #f0f0f0; color: #8b8b8b; }
+.tag-progress { background: #e8eef5; color: #5a7a96; }
+.tag-done { background: var(--cinnabar-light); color: var(--cinnabar); }
+.tag-today { background: #e8eef5; color: #5a7a96; }
+.tag-planned { background: #f5f0e6; color: #a68b5b; }
+.tag-anytime { background: #f0f0f0; color: #8b8b8b; }
+.tag-overdue { background: var(--cinnabar-light); color: var(--cinnabar); }
+
+.task-date {
+  font-size: 12px;
+  color: var(--ink-muted);
+  font-family: 'SF Mono', monospace;
+  letter-spacing: 0.02em;
+}
+
+.task-note {
+  font-size: 12px;
+  color: var(--ink-light);
+  margin-top: 8px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.task-link {
+  display: inline-block;
+  font-size: 12px;
+  color: var(--cinnabar);
+  margin-top: 6px;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.task-link:hover { color: #a03528; }
+
+.task-actions {
+  display: flex;
+  gap: 6px;
+  opacity: 0.25;
+  transition: opacity 0.2s ease;
+  align-items: flex-start;
+  padding-top: 2px;
+}
+
+.task-item:hover .task-actions { opacity: 1; }
+
+.edit-btn {
+  padding: 3px 8px;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  background: rgba(255,255,255,0.8);
+  color: var(--ink-muted);
+  font-size: 11px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s;
+  letter-spacing: 0.04em;
+}
+
+.edit-btn:hover {
+  border-color: var(--cinnabar);
+  color: var(--cinnabar);
+  background: var(--cinnabar-light);
+}
+
+.edit-btn.delete-btn:hover {
+  border-color: var(--cinnabar);
+  color: #fff;
+  background: var(--cinnabar);
+}
+
+.edit-input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  background: rgba(255,255,255,0.9);
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.5;
+  outline: none;
+  resize: none;
+  transition: border-color 0.2s;
+}
+
+.edit-input:focus { border-color: var(--cinnabar); }
+
+.edit-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  align-items: center;
+}
+
+.edit-actions button {
+  padding: 6px 14px;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  background: rgba(255,255,255,0.8);
+  color: var(--ink-light);
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.edit-actions button:hover {
+  border-color: var(--cinnabar);
+  color: var(--cinnabar);
+  background: var(--cinnabar-light);
+}
+
+.edit-actions .save-btn {
+  background: var(--cinnabar);
+  border-color: var(--cinnabar);
+  color: #fff;
+}
+
+.edit-actions .save-btn:hover {
+  background: #a03528;
+  border-color: #a03528;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 48px 20px;
+  color: var(--ink-muted);
+}
+
+.empty-title {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 18px;
+  margin-bottom: 8px;
+  color: var(--ink-light);
+  letter-spacing: 0.08em;
+}
+
+.empty-desc {
+  font-size: 13px;
+  letter-spacing: 0.04em;
+}
+
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(247, 244, 237, 0.7);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+.loading-overlay.show {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.loading-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.seal {
+  width: 64px;
+  height: 64px;
+  border: 3px solid var(--cinnabar);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255,255,255,0.5);
+  position: relative;
+  animation: sealStamp 1.6s ease-in-out infinite;
+}
+
+.seal::before {
+  content: '';
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  right: 4px;
+  bottom: 4px;
+  border: 1px solid rgba(184, 61, 47, 0.3);
+  border-radius: 2px;
+}
+
+.seal-text {
+  font-family: 'Noto Serif SC', 'Songti SC', serif;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--cinnabar);
+  letter-spacing: 0.1em;
+  transform: scaleX(0.95);
+}
+
+.loading-text {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 14px;
+  color: var(--ink-light);
+  letter-spacing: 0.12em;
+  animation: textPulse 1.6s ease-in-out infinite;
+}
+
+@keyframes sealStamp {
+  0%, 100% { transform: translateY(0) scale(1); opacity: 0.8; }
+  25% { transform: translateY(-8px) scale(1.02); opacity: 1; }
+  50% { transform: translateY(2px) scale(0.98); opacity: 1; }
+  75% { transform: translateY(0) scale(1); opacity: 0.9; }
+}
+
+@keyframes textPulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(44, 44, 44, 0.9);
+  color: #fff;
+  padding: 8px 18px;
+  border-radius: 20px;
+  font-size: 13px;
+  z-index: 3000;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.toast.show { opacity: 1; }
+
+::selection {
+  background: rgba(184, 61, 47, 0.15);
+}
+</style>
+</head>
+<body>
+
+<div class="window" id="window">
+<div class="title-bar" id="titleBar">
+  <div class="drag-region" data-tauri-drag-region>
+    <span class="title">一纸待办</span>
+  </div>
+  <div class="window-controls">
+    <button class="window-btn btn-add" onclick="startAdd()" title="添加">+</button>
+    <button class="window-btn btn-refresh" onclick="loadTasks()" title="刷新">↻</button>
+    <button class="window-btn btn-search" id="searchBtn" onclick="toggleSearch()" title="搜索">⌕</button>
+    <button class="window-btn btn-pin" id="pinBtn" onclick="toggleAlwaysOnTop()" title="置顶/取消置顶">△</button>
+    <button class="window-btn btn-collapse" onclick="toggleCollapse()" title="收起/展开">⌄</button>
+    <button class="window-btn btn-minimize" onclick="minimizeWindow()" title="最小化">–</button>
+    <button class="window-btn btn-close" onclick="closeWindow()" title="关闭">✕</button>
+  </div>
+</div>
+
+  <div class="tab-bar">
+    <button class="tab active" data-tab="all" onclick="switchTab('all')">
+      全部 <span class="badge" id="allBadge">0</span>
+    </button>
+    <button class="tab" data-tab="today" onclick="switchTab('today')">
+      今日 <span class="badge" id="todayBadge">0</span>
+    </button>
+    <button class="tab" data-tab="scheduled" onclick="switchTab('scheduled')">
+      计划 <span class="badge" id="scheduledBadge">0</span>
+    </button>
+    <button class="tab" data-tab="anytime" onclick="switchTab('anytime')">
+      随时 <span class="badge" id="anytimeBadge">0</span>
+    </button>
+    <button class="tab" data-tab="completed" onclick="switchTab('completed')">
+      已批 <span class="badge" id="completedBadge">0</span>
+    </button>
+  </div>
+
+  <div class="search-panel" id="searchPanel">
+    <div class="search-row">
+      <input type="text" class="search-input" id="searchKeyword" placeholder="搜索关键词..." oninput="applyFilters()">
+      <select class="search-select" id="searchPriority" onchange="applyFilters()">
+        <option value="">优先级</option>
+        <option value="高">高</option>
+        <option value="中">中</option>
+        <option value="低">低</option>
+      </select>
+    </div>
+    <div class="search-row">
+      <label class="search-label">创建</label>
+      <input type="date" class="search-date" id="searchCreatedFrom" onchange="applyFilters()">
+      <span class="search-sep">—</span>
+      <input type="date" class="search-date" id="searchCreatedTo" onchange="applyFilters()">
+    </div>
+    <div class="search-row">
+      <label class="search-label">完成</label>
+      <input type="date" class="search-date" id="searchCompletedFrom" onchange="applyFilters()">
+      <span class="search-sep">—</span>
+      <input type="date" class="search-date" id="searchCompletedTo" onchange="applyFilters()">
+      <button class="search-clear" onclick="clearFilters()" title="清除筛选">清除</button>
+    </div>
+  </div>
+
+  <div class="content">
+    <div class="tab-panel active" id="panel-all"><div class="task-list" id="allList"></div></div>
+    <div class="tab-panel" id="panel-today"><div class="task-list" id="todayList"></div></div>
+    <div class="tab-panel" id="panel-scheduled"><div class="task-list" id="scheduledList"></div></div>
+    <div class="tab-panel" id="panel-anytime"><div class="task-list" id="anytimeList"></div></div>
+    <div class="tab-panel" id="panel-completed"><div class="task-list" id="completedList"></div></div>
+  </div>
+</div>
+
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="loading-content">
+    <div class="seal"><span class="seal-text">批</span></div>
+    <div class="loading-text">批阅中...</div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="app.js"></script>
+</body>
+</html>

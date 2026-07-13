@@ -1,0 +1,485 @@
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::path::PathBuf;
+use std::process::Command;
+use std::sync::Mutex;
+use tauri::Manager;
+use tauri_plugin_opener::OpenerExt;
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+struct Config {
+    #[serde(rename = "base_token")]
+    base_token: String,
+    #[serde(rename = "table_id")]
+    table_id: String,
+    profile: String,
+}
+
+impl Config {
+    fn load() -> Result<Self, String> {
+        let path = config_path();
+        let content = std::fs::read_to_string(&path)
+            .map_err(|e| format!("无法读取配置文件 {}: {}", path.display(), e))?;
+        serde_json::from_str(&content)
+            .map_err(|e| format!("解析配置文件失败: {}", e))
+    }
+}
+
+fn config_path() -> PathBuf {
+    if let Ok(home) = std::env::var("HOME") {
+        PathBuf::from(home)
+            .join(".hermes")
+            .join("scripts")
+            .join("voice-todo-float")
+            .join("config.json")
+    } else {
+        PathBuf::from("config.json")
+    }
+}
+
+struct AppState {
+    main_window: Mutex<Option<tauri::WebviewWindow>>,
+    config: Config,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+struct Task {
+    id: String,
+    name: String,
+    status: String,
+    deadline: Option<String>,
+    priority: String,
+    note: String,
+    link: String,
+    #[serde(rename = "created_at")]
+    created_at: Option<String>,
+    #[serde(rename = "completed_at")]
+    completed_at: Option<String>,
+    #[serde(rename = "type")]
+    task_type: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct LarkResponse<T> {
+    ok: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    data: Option<T>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    error: Option<LarkError>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct LarkError {
+    message: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct RecordListData {
+    data: Vec<Vec<serde_json::Value>>,
+    fields: Vec<String>,
+    #[serde(rename = "record_id_list")]
+    record_id_list: Vec<String>,
+}
+
+#[derive(Serialize, Debug)]
+struct ApiResponse<T> {
+    code: i32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    data: Option<T>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    msg: Option<String>,
+}
+
+impl<T> ApiResponse<T> {
+    fn ok(data: T) -> Self {
+        Self { code: 0, data: Some(data), msg: None }
+    }
+    fn err(msg: impl Into<String>) -> Self {
+        Self { code: -1, data: None, msg: Some(msg.into()) }
+    }
+}
+
+fn lark_cli_name() -> &'static str {
+    if cfg!(target_os = "windows") {
+        "lark-cli.exe"
+    } else {
+        "lark-cli"
+    }
+}
+
+fn find_lark_cli() -> Result<PathBuf, String> {
+    if let Ok(path) = which::which(lark_cli_name()) {
+        return Ok(path);
+    }
+
+    let home = if cfg!(target_os = "windows") {
+        std::env::var("USERPROFILE").map(PathBuf::from).or_else(|_| {
+            std::env::var("HOMEDRIVE").and_then(|d| std::env::var("HOMEPATH").map(|p| PathBuf::from(format!("{}{}", d, p))))
+        }).map_err(|_| "Cannot determine home directory")?
+    } else {
+        std::env::var("HOME").map(PathBuf::from).map_err(|_| "Cannot determine home directory")?
+    };
+
+    let candidates: Vec<PathBuf> = if cfg!(target_os = "windows") {
+        vec![
+            home.join("AppData").join("Roaming").join("npm").join("lark-cli.cmd"),
+            home.join("AppData").join("Roaming").join("npm").join("lark-cli.exe"),
+            PathBuf::from("C:\\Program Files\\nodejs\\lark-cli.cmd"),
+        ]
+    } else {
+        let project_root = PathBuf::from("/Users/yang/voice-todo-float");
+        vec![
+            home.join(".local").join("bin").join("lark-cli"),
+            home.join(".nvm").join("versions").join("node").join("*").join("bin").join("lark-cli"),
+            PathBuf::from("/usr/local/bin/lark-cli"),
+            PathBuf::from("/opt/homebrew/bin/lark-cli"),
+            project_root.join("lark-deps").join("node_modules").join("@larksuite").join("cli").join("bin").join("lark-cli"),
+            home.join(".npm-cache").join("_npx").join("*").join("node_modules").join("@larksuite").join("cli").join("bin").join("lark-cli"),
+        ]
+    };
+
+    for candidate in candidates {
+        if candidate.exists() {
+            return Ok(candidate);
+        }
+    }
+
+    Err(format!(
+        "lark-cli 不可用。请先安装并登录：lark-cli auth login\n\n安装方法：npm install -g @larksuite/cli"
+    ))
+}
+
+fn run_lark_cli(profile: &str, args: &[String]) -> Result<String, String> {
+    let cli = find_lark_cli()?;
+    let mut full_args = vec![
+        "--profile".to_string(),
+        profile.to_string(),
+    ];
+    full_args.extend_from_slice(args);
+    let output = Command::new(&cli)
+        .args(&full_args)
+        .output()
+        .map_err(|e| format!("运行 lark-cli 失败: {}", e))?;
+
+    let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+    let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+
+    if !output.status.success() {
+        return Err(format!("lark-cli 错误: {}\n{}", stderr, stdout));
+    }
+
+    if stdout.trim().is_empty() {
+        return Ok("{}".to_string());
+    }
+
+    Ok(stdout)
+}
+
+#[tauri::command]
+fn get_tasks(state: tauri::State<AppState>) -> ApiResponse<Vec<Task>> {
+    let config = &state.config;
+    let args = vec![
+        "base".to_string(),
+        "+record-list".to_string(),
+        "--base-token".to_string(),
+        config.base_token.clone(),
+        "--table-id".to_string(),
+        config.table_id.clone(),
+        "--limit".to_string(),
+        "200".to_string(),
+        "--json".to_string(),
+    ];
+
+    let output = match run_lark_cli(&config.profile, &args) {
+        Ok(o) => o,
+        Err(e) => return ApiResponse::err(e),
+    };
+
+    let resp: LarkResponse<RecordListData> = match serde_json::from_str(&output) {
+        Ok(r) => r,
+        Err(e) => return ApiResponse::err(format!("解析响应失败: {}\n{}", e, output)),
+    };
+
+    if !resp.ok {
+        return ApiResponse::err(resp.error.map(|e| e.message).unwrap_or_else(|| "获取任务失败".to_string()));
+    }
+
+    let raw = match resp.data {
+        Some(d) => d,
+        None => return ApiResponse::ok(vec![]),
+    };
+
+    let mut tasks = Vec::new();
+    for (idx, row) in raw.data.iter().enumerate() {
+        let record_id = raw.record_id_list.get(idx).cloned().unwrap_or_default();
+        let mut fields_map: HashMap<String, serde_json::Value> = HashMap::new();
+        for (field_idx, field_name) in raw.fields.iter().enumerate() {
+            if let Some(val) = row.get(field_idx) {
+                fields_map.insert(field_name.clone(), val.clone());
+            }
+        }
+
+    let get_str = |key: &str| -> String {
+        fields_map.get(key).and_then(|v| {
+            if v.is_string() {
+                v.as_str().map(|s| s.to_string())
+            } else if v.is_array() && v.as_array().map(|a| a.len()) == Some(1) {
+                v.as_array().and_then(|a| a.first()).and_then(|f| f.as_str().map(|s| s.to_string()))
+            } else {
+                None
+            }
+        }).unwrap_or_default()
+    };
+
+    let get_opt_str = |key: &str| -> Option<String> {
+        fields_map.get(key).and_then(|v| {
+            if v.is_string() && v.as_str().map(|s| !s.is_empty()).unwrap_or(false) {
+                v.as_str().map(|s| s.to_string())
+            } else if v.is_array() && v.as_array().map(|a| a.len()) == Some(1) {
+                v.as_array().and_then(|a| a.first()).and_then(|f| f.as_str().map(|s| s.to_string()))
+            } else {
+                None
+            }
+        })
+    };
+
+    let deadline = get_opt_str("截止时间");
+    let status = get_str("状态");
+        let task_type = if deadline.is_some() { "scheduled" } else { "someday" };
+
+        tasks.push(Task {
+            id: record_id,
+            name: get_str("任务名称"),
+            status: if status.is_empty() { "待办".to_string() } else { status },
+            deadline,
+            priority: get_str("优先级"),
+            note: get_str("备注"),
+            link: get_str("链接"),
+        created_at: get_opt_str("创建时间"),
+        completed_at: get_opt_str("完成时间"),
+            task_type: task_type.to_string(),
+        });
+    }
+
+    ApiResponse::ok(tasks)
+}
+
+#[tauri::command]
+fn create_task(state: tauri::State<AppState>, name: String, deadline: Option<String>, priority: String) -> ApiResponse<serde_json::Value> {
+    if name.trim().is_empty() {
+        return ApiResponse::err("任务名称不能为空");
+    }
+    let config = &state.config;
+
+    let mut fields = vec!["任务名称", "状态", "优先级"];
+    let mut row: Vec<serde_json::Value> = vec![name.trim().into(), "待办".into(), priority.into()];
+
+    if let Some(d) = deadline {
+        if !d.is_empty() {
+            fields.push("截止时间");
+            row.push(d.into());
+        }
+    }
+
+    let json_data = serde_json::json!({ "fields": fields, "rows": [row] });
+    let temp_dir = std::env::temp_dir().join("voice-todo-float");
+    std::fs::create_dir_all(&temp_dir).map_err(|e| e.to_string()).ok();
+    let json_file = temp_dir.join(format!("batch_{}.json", std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_millis()));
+
+    if let Err(e) = std::fs::write(&json_file, json_data.to_string()) {
+        return ApiResponse::err(format!("写入临时文件失败: {}", e));
+    }
+
+    let path_str = json_file.to_string_lossy().to_string();
+    let args = vec![
+        "base".to_string(),
+        "+record-batch-create".to_string(),
+        "--base-token".to_string(),
+        config.base_token.clone(),
+        "--table-id".to_string(),
+        config.table_id.clone(),
+        "--json".to_string(),
+        format!("@{}", path_str),
+    ];
+
+    let output = match run_lark_cli(&config.profile, &args) {
+        Ok(o) => o,
+        Err(e) => return ApiResponse::err(e),
+    };
+
+    let resp: LarkResponse<serde_json::Value> = match serde_json::from_str(&output) {
+        Ok(r) => r,
+        Err(e) => return ApiResponse::err(format!("解析响应失败: {}\n{}", e, output)),
+    };
+
+    if !resp.ok {
+        return ApiResponse::err(resp.error.map(|e| e.message).unwrap_or_else(|| "创建失败".to_string()));
+    }
+
+    ApiResponse::ok(serde_json::json!({}))
+}
+
+#[tauri::command]
+fn update_task(state: tauri::State<AppState>, mut payload: std::collections::HashMap<String, serde_json::Value>) -> ApiResponse<serde_json::Value> {
+    let id = match payload.remove("id") {
+        Some(serde_json::Value::String(s)) => s,
+        _ => return ApiResponse::err("缺少记录 ID"),
+    };
+    let config = &state.config;
+
+    let temp_dir = std::env::temp_dir().join("voice-todo-float");
+    std::fs::create_dir_all(&temp_dir).map_err(|e| e.to_string()).ok();
+    let json_file = temp_dir.join(format!("upsert_{}.json", std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_millis()));
+
+    if let Err(e) = std::fs::write(&json_file, serde_json::to_string(&payload).unwrap_or_default()) {
+        return ApiResponse::err(format!("写入临时文件失败: {}", e));
+    }
+
+    let path_str = json_file.to_string_lossy().to_string();
+    let args = vec![
+        "base".to_string(),
+        "+record-upsert".to_string(),
+        "--base-token".to_string(),
+        config.base_token.clone(),
+        "--table-id".to_string(),
+        config.table_id.clone(),
+        "--record-id".to_string(),
+        id,
+        "--json".to_string(),
+        format!("@{}", path_str),
+    ];
+
+    let output = match run_lark_cli(&config.profile, &args) {
+        Ok(o) => o,
+        Err(e) => return ApiResponse::err(e),
+    };
+
+    let resp: LarkResponse<serde_json::Value> = match serde_json::from_str(&output) {
+        Ok(r) => r,
+        Err(e) => return ApiResponse::err(format!("解析响应失败: {}\n{}", e, output)),
+    };
+
+    if !resp.ok {
+        return ApiResponse::err(resp.error.map(|e| e.message).unwrap_or_else(|| "更新失败".to_string()));
+    }
+
+    ApiResponse::ok(serde_json::json!({}))
+}
+
+#[tauri::command]
+fn delete_task(state: tauri::State<AppState>, id: String) -> ApiResponse<serde_json::Value> {
+    let config = &state.config;
+    let args = vec![
+        "base".to_string(),
+        "+record-delete".to_string(),
+        "--base-token".to_string(),
+        config.base_token.clone(),
+        "--table-id".to_string(),
+        config.table_id.clone(),
+        "--record-id".to_string(),
+        id,
+        "--yes".to_string(),
+    ];
+
+    let output = match run_lark_cli(&config.profile, &args) {
+        Ok(o) => o,
+        Err(e) => return ApiResponse::err(e),
+    };
+
+    let resp: LarkResponse<serde_json::Value> = match serde_json::from_str(&output) {
+        Ok(r) => r,
+        Err(e) => return ApiResponse::err(format!("解析响应失败: {}\n{}", e, output)),
+    };
+
+    if !resp.ok {
+        return ApiResponse::err(resp.error.map(|e| e.message).unwrap_or_else(|| "删除失败".to_string()));
+    }
+
+    ApiResponse::ok(serde_json::json!({}))
+}
+
+#[tauri::command]
+fn toggle_collapse(state: tauri::State<AppState>, collapsed: bool) -> Result<(), String> {
+    let window = state.main_window.lock().map_err(|e| e.to_string())?;
+    if let Some(w) = window.as_ref() {
+        if collapsed {
+            w.set_size(tauri::Size::Physical(tauri::PhysicalSize { width: 360, height: 52 }))
+                .map_err(|e| e.to_string())?;
+        } else {
+            w.set_size(tauri::Size::Physical(tauri::PhysicalSize { width: 360, height: 500 }))
+                .map_err(|e| e.to_string())?;
+        }
+    }
+    Ok(())
+}
+
+#[tauri::command]
+fn set_always_on_top(state: tauri::State<AppState>, value: bool) -> Result<(), String> {
+    let window = state.main_window.lock().map_err(|e| e.to_string())?;
+    if let Some(w) = window.as_ref() {
+        w.set_always_on_top(value).map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+fn minimize_window(state: tauri::State<AppState>) -> Result<(), String> {
+    let window = state.main_window.lock().map_err(|e| e.to_string())?;
+    if let Some(w) = window.as_ref() {
+        w.minimize().map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+fn close_window(state: tauri::State<AppState>) -> Result<(), String> {
+    let window = state.main_window.lock().map_err(|e| e.to_string())?;
+    if let Some(w) = window.as_ref() {
+        w.close().map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+fn open_external(app: tauri::AppHandle, url: String) -> Result<(), String> {
+    app.opener()
+        .open_url(&url, None::<&str>)
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+fn main() {
+    let config = match Config::load() {
+        Ok(c) => c,
+        Err(e) => {
+            eprintln!("配置加载失败: {}", e);
+            std::process::exit(1);
+        }
+    };
+
+    let app_config = config.clone();
+    tauri::Builder::default()
+        .plugin(tauri_plugin_opener::init())
+        .setup(move |app| {
+            let window = app.get_webview_window("main").expect("main window not found");
+            let _ = window.set_focus();
+            app.manage(AppState {
+                main_window: Mutex::new(Some(window)),
+                config: app_config.clone(),
+            });
+            Ok(())
+        })
+        .invoke_handler(tauri::generate_handler![
+            get_tasks,
+            create_task,
+            update_task,
+            delete_task,
+            toggle_collapse,
+            set_always_on_top,
+            minimize_window,
+            close_window,
+            open_external
+        ])
+        .run(tauri::generate_context!())
+        .expect("error while running tauri application");
+}

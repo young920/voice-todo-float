@@ -299,7 +299,14 @@ fn find_lark_cli() -> Result<PathBuf, String> {
 }
 
 fn get_lark_cli_version(path: &PathBuf) -> Option<Vec<u32>> {
-    let output = Command::new(path).arg("--version").output().ok()?;
+    let mut cmd = Command::new(path);
+    cmd.arg("--version");
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+    }
+    let output = cmd.output().ok()?;
     let stdout = String::from_utf8_lossy(&output.stdout);
     parse_version(&stdout)
 }

@@ -528,6 +528,8 @@ fn run_lark_cli(profile: &str, args: &[String]) -> Result<String, String> {
 fn get_tasks(state: tauri::State<AppState>) -> ApiResponse<Vec<Task>> {
     let config = &state.config;
     let args = vec![
+        "--format".to_string(),
+        "json".to_string(),
         "base".to_string(),
         "+record-list".to_string(),
         "--base-token".to_string(),
@@ -536,7 +538,6 @@ fn get_tasks(state: tauri::State<AppState>) -> ApiResponse<Vec<Task>> {
         config.table_id.clone(),
         "--limit".to_string(),
         "200".to_string(),
-        "--json".to_string(),
     ];
 
     let output = match run_lark_cli(&config.profile, &args) {

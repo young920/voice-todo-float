@@ -106,11 +106,20 @@ body::before {
   z-index: 2;
 }
 
+.window-controls {
+  display: flex;
+  gap: 10px;
+  position: relative;
+  z-index: 3;
+}
+
 .title-bar .drag-region {
   flex: 1;
   height: 100%;
   display: flex;
   align-items: center;
+  position: relative;
+  z-index: 1;
 }
 
 .title-bar .title {
@@ -704,44 +713,44 @@ body::before {
 
 <div class="window" id="window">
 <div class="title-bar" id="titleBar">
-  <div class="drag-region" id="dragRegion">
+  <div class="drag-region" id="dragRegion" data-tauri-drag-region>
     <span class="title">一纸待办</span>
   </div>
-  <div class="window-controls">
-    <button class="window-btn btn-add" onclick="startAdd()" title="添加">+</button>
-    <button class="window-btn btn-refresh" onclick="loadTasks()" title="刷新">↻</button>
-    <button class="window-btn btn-search" id="searchBtn" onclick="toggleSearch()" title="搜索">⌕</button>
-    <button class="window-btn btn-pin" id="pinBtn" onclick="toggleAlwaysOnTop()" title="置顶/取消置顶">△</button>
-    <button class="window-btn btn-collapse" onclick="toggleCollapse()" title="收起/展开">⌄</button>
-    <button class="window-btn btn-minimize" onclick="minimizeWindow()" title="最小化">–</button>
-    <button class="window-btn btn-close" onclick="closeWindow()" title="关闭">✕</button>
+  <div class="window-controls" id="windowControls">
+    <button class="window-btn btn-add" id="btnAdd" title="添加">+</button>
+    <button class="window-btn btn-refresh" id="btnRefresh" title="刷新">↻</button>
+    <button class="window-btn btn-search" id="searchBtn" title="搜索">⌕</button>
+    <button class="window-btn btn-pin" id="pinBtn" title="置顶/取消置顶">△</button>
+    <button class="window-btn btn-collapse" id="btnCollapse" title="收起/展开">⌄</button>
+    <button class="window-btn btn-minimize" id="btnMinimize" title="最小化">–</button>
+    <button class="window-btn btn-close" id="btnClose" title="关闭">✕</button>
   </div>
 </div>
 
   <div id="errorBanner" class="error-banner"></div>
 
   <div class="tab-bar">
-    <button class="tab active" data-tab="all" onclick="switchTab('all')">
+    <button class="tab active" data-tab="all">
       全部 <span class="badge" id="allBadge">0</span>
     </button>
-    <button class="tab" data-tab="today" onclick="switchTab('today')">
+    <button class="tab" data-tab="today">
       今日 <span class="badge" id="todayBadge">0</span>
     </button>
-    <button class="tab" data-tab="scheduled" onclick="switchTab('scheduled')">
+    <button class="tab" data-tab="scheduled">
       计划 <span class="badge" id="scheduledBadge">0</span>
     </button>
-    <button class="tab" data-tab="anytime" onclick="switchTab('anytime')">
+    <button class="tab" data-tab="anytime">
       随时 <span class="badge" id="anytimeBadge">0</span>
     </button>
-    <button class="tab" data-tab="completed" onclick="switchTab('completed')">
+    <button class="tab" data-tab="completed">
       已批 <span class="badge" id="completedBadge">0</span>
     </button>
   </div>
 
   <div class="search-panel" id="searchPanel">
     <div class="search-row">
-      <input type="text" class="search-input" id="searchKeyword" placeholder="搜索关键词..." oninput="applyFilters()">
-      <select class="search-select" id="searchPriority" onchange="applyFilters()">
+      <input type="text" class="search-input" id="searchKeyword" placeholder="搜索关键词...">
+      <select class="search-select" id="searchPriority">
         <option value="">优先级</option>
         <option value="高">高</option>
         <option value="中">中</option>
@@ -750,16 +759,16 @@ body::before {
     </div>
     <div class="search-row">
       <label class="search-label">创建</label>
-      <input type="date" class="search-date" id="searchCreatedFrom" onchange="applyFilters()">
+      <input type="date" class="search-date" id="searchCreatedFrom">
       <span class="search-sep">—</span>
-      <input type="date" class="search-date" id="searchCreatedTo" onchange="applyFilters()">
+      <input type="date" class="search-date" id="searchCreatedTo">
     </div>
     <div class="search-row">
       <label class="search-label">完成</label>
-      <input type="date" class="search-date" id="searchCompletedFrom" onchange="applyFilters()">
+      <input type="date" class="search-date" id="searchCompletedFrom">
       <span class="search-sep">—</span>
-      <input type="date" class="search-date" id="searchCompletedTo" onchange="applyFilters()">
-      <button class="search-clear" onclick="clearFilters()" title="清除筛选">清除</button>
+      <input type="date" class="search-date" id="searchCompletedTo">
+      <button class="search-clear" id="searchClear" title="清除筛选">清除</button>
     </div>
   </div>
 
@@ -1120,7 +1129,7 @@ function renderAddTask() {
     <div class="task-item is-adding">
       <div class="checkbox"></div>
       <div class="task-content">
-        <textarea class="edit-input" id="addInput" rows="2" placeholder="要做什么..." onkeydown="handleAddKey(event)"></textarea>
+        <textarea class="edit-input" id="addInput" rows="2" placeholder="要做什么..."></textarea>
         <div class="edit-actions">
           <select class="edit-input" id="addPriority" style="width: auto; min-height: auto; padding: 4px 8px; font-size: 13px; border-color: var(--border);">
             <option value="高">高</option>
@@ -1130,8 +1139,8 @@ function renderAddTask() {
           <input type="date" class="edit-input" id="addDeadline" value="" style="width: auto; min-height: auto; padding: 4px 8px; font-size: 13px; border-color: var(--border);" />
         </div>
         <div class="edit-actions">
-          <button class="save-btn" onclick="saveAdd()">添加</button>
-          <button onclick="cancelAdd()">取消</button>
+          <button class="save-btn" data-action="saveAdd">添加</button>
+          <button data-action="cancelAdd">取消</button>
         </div>
       </div>
     </div>
@@ -1147,7 +1156,7 @@ function renderTask(task) {
       <div class="task-item">
         <div class="checkbox ${isDone ? 'checked' : ''}"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>
         <div class="task-content">
-          <textarea class="edit-input" id="editInput-${task.id}" rows="2" onkeydown="handleEditKey(event, '${task.id}')">${escapeHtml(task.name)}</textarea>
+          <textarea class="edit-input" id="editInput-${task.id}" rows="2">${escapeHtml(task.name)}</textarea>
           <div class="edit-actions">
             <select class="edit-input" id="editPriority-${task.id}" style="width: auto; min-height: auto; padding: 4px 8px; font-size: 13px; border-color: var(--border);">
               <option value="高" ${task.priority === '高' ? 'selected' : ''}>高</option>
@@ -1163,8 +1172,8 @@ function renderTask(task) {
             <textarea class="edit-input" id="editNote-${task.id}" rows="2" placeholder="备注..." style="flex: 1; min-height: auto; padding: 4px 8px; font-size: 13px; border-color: var(--border); resize: vertical;">${escapeHtml(task.note || '')}</textarea>
           </div>
           <div class="edit-actions">
-            <button class="save-btn" onclick="saveEdit('${task.id}')">保存</button>
-            <button onclick="cancelEdit()">取消</button>
+            <button class="save-btn" data-action="saveEdit" data-task-id="${task.id}">保存</button>
+            <button data-action="cancelEdit">取消</button>
           </div>
         </div>
       </div>
@@ -1233,6 +1242,22 @@ function renderTasks() {
   document.getElementById('scheduledBadge').textContent = scheduledRaw.length;
   document.getElementById('anytimeBadge').textContent = anytimeRaw.length;
   document.getElementById('completedBadge').textContent = completedRaw.length;
+
+  bindDynamicEvents();
+}
+
+function bindDynamicEvents() {
+  const addInput = document.getElementById('addInput');
+  if (addInput) {
+    addInput.addEventListener('keydown', handleAddKey);
+  }
+
+  if (editingTaskId) {
+    const editInput = document.getElementById(`editInput-${editingTaskId}`);
+    if (editInput) {
+      editInput.addEventListener('keydown', (e) => handleEditKey(e, editingTaskId));
+    }
+  }
 }
 
 function startAdd() {
@@ -1412,22 +1437,30 @@ document.addEventListener('click', (e) => {
   }
 
   const taskItem = e.target.closest('.task-item');
-  if (!taskItem) return;
-
-  const taskId = taskItem.getAttribute('data-task-id');
-  if (!taskId) return;
-
-  const actionEl = e.target.closest('[data-action]');
-  if (!actionEl) return;
-
-  const action = actionEl.getAttribute('data-action');
-  e.stopPropagation();
-  if (action === 'toggle') {
-    toggleTaskStatus(taskId);
-  } else if (action === 'edit') {
-    startEdit(taskId);
-  } else if (action === 'delete') {
-    deleteTask(taskId);
+  if (taskItem) {
+    const taskId = taskItem.getAttribute('data-task-id');
+    const actionEl = e.target.closest('[data-action]');
+    if (actionEl) {
+      const action = actionEl.getAttribute('data-action');
+      e.stopPropagation();
+      if (action === 'toggle' && taskId) {
+        toggleTaskStatus(taskId);
+      } else if (action === 'edit' && taskId) {
+        startEdit(taskId);
+      } else if (action === 'delete' && taskId) {
+        deleteTask(taskId);
+      } else if (action === 'saveAdd') {
+        saveAdd();
+      } else if (action === 'cancelAdd') {
+        cancelAdd();
+      } else if (action === 'saveEdit') {
+        const id = actionEl.getAttribute('data-task-id');
+        if (id) saveEdit(id);
+      } else if (action === 'cancelEdit') {
+        cancelEdit();
+      }
+      return;
+    }
   }
 });
 
@@ -1446,6 +1479,39 @@ window.addEventListener('DOMContentLoaded', () => {
       }
     });
   }
+
+  const addListener = (id, handler) => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('click', handler);
+  };
+
+  const addInputListener = (id, event, handler) => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener(event, handler);
+  };
+
+  addListener('btnAdd', startAdd);
+  addListener('btnRefresh', loadTasks);
+  addListener('searchBtn', toggleSearch);
+  addListener('pinBtn', toggleAlwaysOnTop);
+  addListener('btnCollapse', toggleCollapse);
+  addListener('btnMinimize', minimizeWindow);
+  addListener('btnClose', closeWindow);
+
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      const tabName = tab.getAttribute('data-tab');
+      if (tabName) switchTab(tabName);
+    });
+  });
+
+  addInputListener('searchKeyword', 'input', applyFilters);
+  addInputListener('searchPriority', 'change', applyFilters);
+  addInputListener('searchCreatedFrom', 'change', applyFilters);
+  addInputListener('searchCreatedTo', 'change', applyFilters);
+  addInputListener('searchCompletedFrom', 'change', applyFilters);
+  addInputListener('searchCompletedTo', 'change', applyFilters);
+  addListener('searchClear', clearFilters);
 });
 
 </script>

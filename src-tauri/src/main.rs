@@ -20,8 +20,7 @@ impl Config {
         let path = config_path();
         let content = std::fs::read_to_string(&path)
             .map_err(|e| format!("无法读取配置文件 {}: {}", path.display(), e))?;
-        serde_json::from_str(&content)
-            .map_err(|e| format!("解析配置文件失败: {}", e))
+        serde_json::from_str(&content).map_err(|e| format!("解析配置文件失败: {}", e))
     }
 }
 
@@ -35,6 +34,31 @@ fn config_path() -> PathBuf {
     } else {
         PathBuf::from("config.json")
     }
+}
+
+fn project_root() -> PathBuf {
+    std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."))
+}
+
+fn tmp_json_dir() -> PathBuf {
+    project_root().join("tmp")
+}
+
+fn tmp_json_path(prefix: &str) -> (PathBuf, String) {
+    let dir = tmp_json_dir();
+    std::fs::create_dir_all(&dir).ok();
+    let ts = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis();
+    let file = dir.join(format!("{}_{}.json", prefix, ts));
+    let root = project_root();
+    let rel = file
+        .strip_prefix(&root)
+        .unwrap_or(&file)
+        .to_string_lossy()
+        .to_string();
+    (file, rel)
 }
 
 struct AppState {
@@ -92,10 +116,18 @@ struct ApiResponse<T> {
 
 impl<T> ApiResponse<T> {
     fn ok(data: T) -> Self {
-        Self { code: 0, data: Some(data), msg: None }
+        Self {
+            code: 0,
+            data: Some(data),
+            msg: None,
+        }
     }
     fn err(msg: impl Into<String>) -> Self {
-        Self { code: -1, data: None, msg: Some(msg.into()) }
+        Self {
+            code: -1,
+            data: None,
+            msg: Some(msg.into()),
+        }
     }
 }
 
@@ -109,39 +141,110 @@ fn lark_cli_name() -> &'static str {
 
 fn find_lark_cli() -> Result<PathBuf, String> {
     if let Ok(path) = which::which(lark_cli_name()) {
-        return Ok(path);
+        if is_lark_cli_compatible(&path) {
+            return Ok(path);
+        }
     }
 
     let home = if cfg!(target_os = "windows") {
-        std::env::var("USERPROFILE").map(PathBuf::from).or_else(|_| {
-            std::env::var("HOMEDRIVE").and_then(|d| std::env::var("HOMEPATH").map(|p| PathBuf::from(format!("{}{}", d, p))))
-        }).map_err(|_| "Cannot determine home directory")?
+        std::env::var("USERPROFILE")
+            .map(PathBuf::from)
+            .or_else(|_| {
+                std::env::var("HOMEDRIVE").and_then(|d| {
+                    std::env::var("HOMEPATH").map(|p| PathBuf::from(format!("{}{}", d, p)))
+                })
+            })
+            .map_err(|_| "Cannot determine home directory")?
     } else {
-        std::env::var("HOME").map(PathBuf::from).map_err(|_| "Cannot determine home directory")?
+        std::env::var("HOME")
+            .map(PathBuf::from)
+            .map_err(|_| "Cannot determine home directory")?
     };
 
-    let candidates: Vec<PathBuf> = if cfg!(target_os = "windows") {
+    let project_root = project_root();
+
+    let mut all_paths: Vec<PathBuf> = Vec::new();
+
+    let direct_candidates: Vec<PathBuf> = if cfg!(target_os = "windows") {
         vec![
-            home.join("AppData").join("Roaming").join("npm").join("lark-cli.cmd"),
-            home.join("AppData").join("Roaming").join("npm").join("lark-cli.exe"),
+            home.join("AppData")
+                .join("Roaming")
+                .join("npm")
+                .join("lark-cli.cmd"),
+            home.join("AppData")
+                .join("Roaming")
+                .join("npm")
+                .join("lark-cli.exe"),
             PathBuf::from("C:\\Program Files\\nodejs\\lark-cli.cmd"),
         ]
     } else {
-        let project_root = PathBuf::from("/Users/yang/voice-todo-float");
         vec![
             home.join(".local").join("bin").join("lark-cli"),
-            home.join(".nvm").join("versions").join("node").join("*").join("bin").join("lark-cli"),
             PathBuf::from("/usr/local/bin/lark-cli"),
             PathBuf::from("/opt/homebrew/bin/lark-cli"),
-            project_root.join("lark-deps").join("node_modules").join("@larksuite").join("cli").join("bin").join("lark-cli"),
-            home.join(".npm-cache").join("_npx").join("*").join("node_modules").join("@larksuite").join("cli").join("bin").join("lark-cli"),
+            PathBuf::from("/tmp/npm-global/lib/node_modules/@larksuite/cli/bin/lark-cli"),
+            project_root
+                .join("lark-deps")
+                .join("node_modules")
+                .join("@larksuite")
+                .join("cli")
+                .join("bin")
+                .join("lark-cli"),
+        ]
+    };
+    all_paths.extend(direct_candidates);
+
+    let glob_patterns: Vec<String> = if cfg!(target_os = "windows") {
+        vec![]
+    } else {
+        vec![
+            home.join(".nvm")
+                .join("versions")
+                .join("node")
+                .join("*")
+                .join("bin")
+                .join("lark-cli")
+                .to_string_lossy()
+                .to_string(),
+            home.join(".npm-cache")
+                .join("_npx")
+                .join("*")
+                .join("node_modules")
+                .join("@larksuite")
+                .join("cli")
+                .join("bin")
+                .join("lark-cli")
+                .to_string_lossy()
+                .to_string(),
         ]
     };
 
-    for candidate in candidates {
-        if candidate.exists() {
-            return Ok(candidate);
+    for pattern in glob_patterns {
+        for entry in glob::glob(&pattern).map_err(|e| format!("glob error: {}", e))? {
+            if let Ok(path) = entry {
+                all_paths.push(path);
+            }
         }
+    }
+
+    let mut best: Option<(PathBuf, Vec<u32>)> = None;
+    for path in all_paths {
+        if !path.exists() {
+            continue;
+        }
+        if let Some(version) = get_lark_cli_version(&path) {
+            let better = match &best {
+                None => true,
+                Some((_, v)) => version > *v,
+            };
+            if better {
+                best = Some((path, version));
+            }
+        }
+    }
+
+    if let Some((path, _)) = best {
+        return Ok(path);
     }
 
     Err(format!(
@@ -149,14 +252,47 @@ fn find_lark_cli() -> Result<PathBuf, String> {
     ))
 }
 
+fn get_lark_cli_version(path: &PathBuf) -> Option<Vec<u32>> {
+    let output = Command::new(path).arg("--version").output().ok()?;
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    parse_version(&stdout)
+}
+
+fn parse_version(text: &str) -> Option<Vec<u32>> {
+    let digits_replaced = text
+        .chars()
+        .map(|c| {
+            if c.is_ascii_digit() || c == '.' {
+                c
+            } else {
+                ' '
+            }
+        })
+        .collect::<String>();
+    for token in digits_replaced.split_whitespace() {
+        if token.matches('.').count() == 2 {
+            let parts: Vec<u32> = token.split('.').map(|p| p.parse().unwrap_or(0)).collect();
+            if parts.len() == 3 {
+                return Some(parts);
+            }
+        }
+    }
+    None
+}
+
+fn is_lark_cli_compatible(path: &PathBuf) -> bool {
+    match get_lark_cli_version(path) {
+        Some(v) => v >= vec![1, 0, 68],
+        None => false,
+    }
+}
+
 fn run_lark_cli(profile: &str, args: &[String]) -> Result<String, String> {
     let cli = find_lark_cli()?;
-    let mut full_args = vec![
-        "--profile".to_string(),
-        profile.to_string(),
-    ];
+    let mut full_args = vec!["--profile".to_string(), profile.to_string()];
     full_args.extend_from_slice(args);
     let output = Command::new(&cli)
+        .current_dir(project_root())
         .args(&full_args)
         .output()
         .map_err(|e| format!("运行 lark-cli 失败: {}", e))?;
@@ -201,7 +337,11 @@ fn get_tasks(state: tauri::State<AppState>) -> ApiResponse<Vec<Task>> {
     };
 
     if !resp.ok {
-        return ApiResponse::err(resp.error.map(|e| e.message).unwrap_or_else(|| "获取任务失败".to_string()));
+        return ApiResponse::err(
+            resp.error
+                .map(|e| e.message)
+                .unwrap_or_else(|| "获取任务失败".to_string()),
+        );
     }
 
     let raw = match resp.data {
@@ -219,44 +359,59 @@ fn get_tasks(state: tauri::State<AppState>) -> ApiResponse<Vec<Task>> {
             }
         }
 
-    let get_str = |key: &str| -> String {
-        fields_map.get(key).and_then(|v| {
-            if v.is_string() {
-                v.as_str().map(|s| s.to_string())
-            } else if v.is_array() && v.as_array().map(|a| a.len()) == Some(1) {
-                v.as_array().and_then(|a| a.first()).and_then(|f| f.as_str().map(|s| s.to_string()))
-            } else {
-                None
-            }
-        }).unwrap_or_default()
-    };
+        let get_str = |key: &str| -> String {
+            fields_map
+                .get(key)
+                .and_then(|v| {
+                    if v.is_string() {
+                        v.as_str().map(|s| s.to_string())
+                    } else if v.is_array() && v.as_array().map(|a| a.len()) == Some(1) {
+                        v.as_array()
+                            .and_then(|a| a.first())
+                            .and_then(|f| f.as_str().map(|s| s.to_string()))
+                    } else {
+                        None
+                    }
+                })
+                .unwrap_or_default()
+        };
 
-    let get_opt_str = |key: &str| -> Option<String> {
-        fields_map.get(key).and_then(|v| {
-            if v.is_string() && v.as_str().map(|s| !s.is_empty()).unwrap_or(false) {
-                v.as_str().map(|s| s.to_string())
-            } else if v.is_array() && v.as_array().map(|a| a.len()) == Some(1) {
-                v.as_array().and_then(|a| a.first()).and_then(|f| f.as_str().map(|s| s.to_string()))
-            } else {
-                None
-            }
-        })
-    };
+        let get_opt_str = |key: &str| -> Option<String> {
+            fields_map.get(key).and_then(|v| {
+                if v.is_string() && v.as_str().map(|s| !s.is_empty()).unwrap_or(false) {
+                    v.as_str().map(|s| s.to_string())
+                } else if v.is_array() && v.as_array().map(|a| a.len()) == Some(1) {
+                    v.as_array()
+                        .and_then(|a| a.first())
+                        .and_then(|f| f.as_str().map(|s| s.to_string()))
+                } else {
+                    None
+                }
+            })
+        };
 
-    let deadline = get_opt_str("截止时间");
-    let status = get_str("状态");
-        let task_type = if deadline.is_some() { "scheduled" } else { "someday" };
+        let deadline = get_opt_str("截止时间");
+        let status = get_str("状态");
+        let task_type = if deadline.is_some() {
+            "scheduled"
+        } else {
+            "someday"
+        };
 
         tasks.push(Task {
             id: record_id,
             name: get_str("任务名称"),
-            status: if status.is_empty() { "待办".to_string() } else { status },
+            status: if status.is_empty() {
+                "待办".to_string()
+            } else {
+                status
+            },
             deadline,
             priority: get_str("优先级"),
             note: get_str("备注"),
             link: get_str("链接"),
-        created_at: get_opt_str("创建时间"),
-        completed_at: get_opt_str("完成时间"),
+            created_at: get_opt_str("创建时间"),
+            completed_at: get_opt_str("完成时间"),
             task_type: task_type.to_string(),
         });
     }
@@ -265,7 +420,12 @@ fn get_tasks(state: tauri::State<AppState>) -> ApiResponse<Vec<Task>> {
 }
 
 #[tauri::command]
-fn create_task(state: tauri::State<AppState>, name: String, deadline: Option<String>, priority: String) -> ApiResponse<serde_json::Value> {
+fn create_task(
+    state: tauri::State<AppState>,
+    name: String,
+    deadline: Option<String>,
+    priority: String,
+) -> ApiResponse<serde_json::Value> {
     if name.trim().is_empty() {
         return ApiResponse::err("任务名称不能为空");
     }
@@ -282,15 +442,12 @@ fn create_task(state: tauri::State<AppState>, name: String, deadline: Option<Str
     }
 
     let json_data = serde_json::json!({ "fields": fields, "rows": [row] });
-    let temp_dir = std::env::temp_dir().join("voice-todo-float");
-    std::fs::create_dir_all(&temp_dir).map_err(|e| e.to_string()).ok();
-    let json_file = temp_dir.join(format!("batch_{}.json", std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_millis()));
+    let (json_file, path_str) = tmp_json_path("batch");
 
     if let Err(e) = std::fs::write(&json_file, json_data.to_string()) {
         return ApiResponse::err(format!("写入临时文件失败: {}", e));
     }
 
-    let path_str = json_file.to_string_lossy().to_string();
     let args = vec![
         "base".to_string(),
         "+record-batch-create".to_string(),
@@ -313,29 +470,36 @@ fn create_task(state: tauri::State<AppState>, name: String, deadline: Option<Str
     };
 
     if !resp.ok {
-        return ApiResponse::err(resp.error.map(|e| e.message).unwrap_or_else(|| "创建失败".to_string()));
+        return ApiResponse::err(
+            resp.error
+                .map(|e| e.message)
+                .unwrap_or_else(|| "创建失败".to_string()),
+        );
     }
 
     ApiResponse::ok(serde_json::json!({}))
 }
 
 #[tauri::command]
-fn update_task(state: tauri::State<AppState>, mut payload: std::collections::HashMap<String, serde_json::Value>) -> ApiResponse<serde_json::Value> {
+fn update_task(
+    state: tauri::State<AppState>,
+    mut payload: std::collections::HashMap<String, serde_json::Value>,
+) -> ApiResponse<serde_json::Value> {
     let id = match payload.remove("id") {
         Some(serde_json::Value::String(s)) => s,
         _ => return ApiResponse::err("缺少记录 ID"),
     };
     let config = &state.config;
 
-    let temp_dir = std::env::temp_dir().join("voice-todo-float");
-    std::fs::create_dir_all(&temp_dir).map_err(|e| e.to_string()).ok();
-    let json_file = temp_dir.join(format!("upsert_{}.json", std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_millis()));
+    let (json_file, path_str) = tmp_json_path("upsert");
 
-    if let Err(e) = std::fs::write(&json_file, serde_json::to_string(&payload).unwrap_or_default()) {
+    if let Err(e) = std::fs::write(
+        &json_file,
+        serde_json::to_string(&payload).unwrap_or_default(),
+    ) {
         return ApiResponse::err(format!("写入临时文件失败: {}", e));
     }
 
-    let path_str = json_file.to_string_lossy().to_string();
     let args = vec![
         "base".to_string(),
         "+record-upsert".to_string(),
@@ -360,7 +524,11 @@ fn update_task(state: tauri::State<AppState>, mut payload: std::collections::Has
     };
 
     if !resp.ok {
-        return ApiResponse::err(resp.error.map(|e| e.message).unwrap_or_else(|| "更新失败".to_string()));
+        return ApiResponse::err(
+            resp.error
+                .map(|e| e.message)
+                .unwrap_or_else(|| "更新失败".to_string()),
+        );
     }
 
     ApiResponse::ok(serde_json::json!({}))
@@ -392,7 +560,11 @@ fn delete_task(state: tauri::State<AppState>, id: String) -> ApiResponse<serde_j
     };
 
     if !resp.ok {
-        return ApiResponse::err(resp.error.map(|e| e.message).unwrap_or_else(|| "删除失败".to_string()));
+        return ApiResponse::err(
+            resp.error
+                .map(|e| e.message)
+                .unwrap_or_else(|| "删除失败".to_string()),
+        );
     }
 
     ApiResponse::ok(serde_json::json!({}))
@@ -403,11 +575,17 @@ fn toggle_collapse(state: tauri::State<AppState>, collapsed: bool) -> Result<(),
     let window = state.main_window.lock().map_err(|e| e.to_string())?;
     if let Some(w) = window.as_ref() {
         if collapsed {
-            w.set_size(tauri::Size::Physical(tauri::PhysicalSize { width: 360, height: 52 }))
-                .map_err(|e| e.to_string())?;
+            w.set_size(tauri::Size::Physical(tauri::PhysicalSize {
+                width: 360,
+                height: 52,
+            }))
+            .map_err(|e| e.to_string())?;
         } else {
-            w.set_size(tauri::Size::Physical(tauri::PhysicalSize { width: 360, height: 500 }))
-                .map_err(|e| e.to_string())?;
+            w.set_size(tauri::Size::Physical(tauri::PhysicalSize {
+                width: 360,
+                height: 500,
+            }))
+            .map_err(|e| e.to_string())?;
         }
     }
     Ok(())
@@ -441,6 +619,15 @@ fn close_window(state: tauri::State<AppState>) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn start_dragging(state: tauri::State<AppState>) -> Result<(), String> {
+    let window = state.main_window.lock().map_err(|e| e.to_string())?;
+    if let Some(w) = window.as_ref() {
+        w.start_dragging().map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
 fn open_external(app: tauri::AppHandle, url: String) -> Result<(), String> {
     app.opener()
         .open_url(&url, None::<&str>)
@@ -461,7 +648,23 @@ fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .setup(move |app| {
-            let window = app.get_webview_window("main").expect("main window not found");
+            let window = app
+                .get_webview_window("main")
+                .expect("main window not found");
+
+            #[cfg(target_os = "macos")]
+            {
+                use objc2::msg_send;
+                use objc2::runtime::AnyObject;
+                if let Ok(ns_window) = window.ns_window() {
+                    let ns_window = ns_window as *mut AnyObject;
+                    unsafe {
+                        let _: () = msg_send![ns_window, setMovable: true];
+                        let _: () = msg_send![ns_window, setMovableByWindowBackground: false];
+                    }
+                }
+            }
+
             let _ = window.set_focus();
             app.manage(AppState {
                 main_window: Mutex::new(Some(window)),
@@ -478,6 +681,7 @@ fn main() {
             set_always_on_top,
             minimize_window,
             close_window,
+            start_dragging,
             open_external
         ])
         .run(tauri::generate_context!())

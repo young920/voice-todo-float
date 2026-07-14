@@ -228,10 +228,10 @@ function getTaskTag(task) {
 
 function getPriorityClass(priority) {
   switch (priority) {
-    case '高': return 'tag-overdue';
-    case '中': return 'tag-planned';
-    case '低': return 'tag-anytime';
-    default: return 'tag-planned';
+    case '高': return 'priority-high';
+    case '中': return 'priority-medium';
+    case '低': return 'priority-low';
+    default: return 'priority-medium';
   }
 }
 
@@ -371,14 +371,14 @@ function renderTask(task) {
     `;
   }
   return `
-    <div class="task-item ${isDone ? 'completed' : ''}">
-      <div class="checkbox ${isDone ? 'checked' : ''}" onclick="event.stopPropagation(); toggleTaskStatus('${task.id}')">
+    <div class="task-item ${isDone ? 'completed' : ''}" data-task-id="${task.id}">
+      <div class="checkbox ${isDone ? 'checked' : ''}" data-action="toggle">
         <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
       </div>
       <div class="task-content">
         <div class="task-title">${escapeHtml(task.name)}</div>
         <div class="task-meta">
-          ${task.priority !== '中' ? `<span class="task-tag ${getPriorityClass(task.priority)}">${task.priority}</span>` : ''}
+          ${task.priority ? `<span class="task-tag ${getPriorityClass(task.priority)}">${task.priority}</span>` : ''}
           ${tag ? `<span class="task-tag ${tag.class}">${tag.label}</span>` : ''}
           ${dateLabel ? `<span class="task-date">${dateLabel}</span>` : ''}
         </div>
@@ -386,8 +386,8 @@ function renderTask(task) {
         ${task.link ? `<a class="task-link" href="#" data-url="${escapeHtml(normalizeUrl(task.link))}">${escapeHtml(task.link)}</a>` : ''}
       </div>
       <div class="task-actions">
-        <button class="edit-btn" onclick="event.stopPropagation(); startEdit('${task.id}')" title="编辑">改</button>
-        <button class="edit-btn delete-btn" onclick="event.stopPropagation(); deleteTask('${task.id}')" title="删除">删</button>
+        <button class="edit-btn" data-action="edit" title="编辑">改</button>
+        <button class="edit-btn delete-btn" data-action="delete" title="删除">删</button>
       </div>
     </div>
   `;
@@ -530,14 +530,32 @@ function normalizeUrl(url) {
   return url;
 }
 
+let loadingMinTimer = null;
+let loadingStartTime = 0;
+const MIN_LOADING_DURATION = 300;
+
 function showLoading() {
   const el = document.getElementById('loadingOverlay');
-  if (el) el.classList.add('show');
+  if (el) {
+    clearTimeout(loadingMinTimer);
+    loadingStartTime = Date.now();
+    el.classList.add('show');
+  }
 }
 
 function hideLoading() {
   const el = document.getElementById('loadingOverlay');
-  if (el) el.classList.remove('show');
+  if (!el) return;
+  const elapsed = Date.now() - loadingStartTime;
+  const remaining = MIN_LOADING_DURATION - elapsed;
+  if (remaining > 0) {
+    clearTimeout(loadingMinTimer);
+    loadingMinTimer = setTimeout(() => {
+      el.classList.remove('show');
+    }, remaining);
+  } else {
+    el.classList.remove('show');
+  }
 }
 
 function showToast(message) {
@@ -590,6 +608,26 @@ document.addEventListener('click', (e) => {
     e.preventDefault();
     const url = link.getAttribute('data-url');
     if (url) invoke('open_external', { url }).catch(() => {});
+    return;
+  }
+
+  const taskItem = e.target.closest('.task-item');
+  if (!taskItem) return;
+
+  const taskId = taskItem.getAttribute('data-task-id');
+  if (!taskId) return;
+
+  const actionEl = e.target.closest('[data-action]');
+  if (!actionEl) return;
+
+  const action = actionEl.getAttribute('data-action');
+  e.stopPropagation();
+  if (action === 'toggle') {
+    toggleTaskStatus(taskId);
+  } else if (action === 'edit') {
+    startEdit(taskId);
+  } else if (action === 'delete') {
+    deleteTask(taskId);
   }
 });
 
@@ -598,4 +636,14 @@ window.addEventListener('DOMContentLoaded', () => {
   initVoice();
   renderTasks();
   loadTasks();
+
+  const dragRegion = document.getElementById('dragRegion');
+  if (dragRegion) {
+    dragRegion.addEventListener('mousedown', (e) => {
+      if (e.button === 0) {
+        e.preventDefault();
+        invoke('start_dragging').catch(() => {});
+      }
+    });
+  }
 });

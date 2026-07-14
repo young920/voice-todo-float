@@ -13,6 +13,9 @@ dist/
 # Local archive of old prototypes
 archive/
 
+# Temporary runtime files (lark-cli json payloads)
+tmp/
+
 # macOS
 .DS_Store
 

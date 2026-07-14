@@ -76,7 +76,7 @@ npm run build-mac
 npm run build-win
 ```
 
-构建产物输出在 `dist/` 目录。
+构建产物输出在 `src-tauri/target/<target-triple>/release/bundle/` 目录。
 
 ## 项目结构
 
@@ -121,7 +121,7 @@ npm run build-win
 
 ## 下载
 
-- **macOS Apple Silicon**: [voice-todo-float-1.0.0-aarch64.dmg](https://github.com/young920/voice-todo-float/releases/download/v1.0.0/voice-todo-float-1.0.0-aarch64.dmg)
+- **macOS Apple Silicon**: [一纸待办_1.0.0_aarch64.dmg](https://github.com/young920/voice-todo-float/releases/download/v1.0.0/一纸待办_1.0.0_aarch64.dmg)
 
 ## 打包与发布
 
@@ -131,7 +131,7 @@ npm run build-win
 npm run build-mac
 ```
 
-然后将 `dist/mac-arm64/` 下的 `.dmg` 上传到 GitHub Release。
+然后将 `src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/` 下的 `.dmg` 上传到 GitHub Release。
 
 ## 致谢
 

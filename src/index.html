@@ -429,15 +429,6 @@ body::before {
   gap: 4px;
 }
 
-.task-tag::before {
-  content: '';
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: currentColor;
-  opacity: 0.6;
-}
-
 .tag-pending { background: #f0f0f0; color: #8b8b8b; }
 .tag-progress { background: #e8eef5; color: #5a7a96; }
 .tag-done { background: var(--cinnabar-light); color: var(--cinnabar); }
@@ -445,6 +436,10 @@ body::before {
 .tag-planned { background: #f5f0e6; color: #a68b5b; }
 .tag-anytime { background: #f0f0f0; color: #8b8b8b; }
 .tag-overdue { background: var(--cinnabar-light); color: var(--cinnabar); }
+
+.priority-high { background: var(--cinnabar-light); color: var(--cinnabar); }
+.priority-medium { background: #f5f0e6; color: #a68b5b; }
+.priority-low { background: #f0f0f0; color: #8b8b8b; }
 
 .task-date {
   font-size: 12px;
@@ -695,7 +690,7 @@ body::before {
 
 <div class="window" id="window">
 <div class="title-bar" id="titleBar">
-  <div class="drag-region" data-tauri-drag-region>
+  <div class="drag-region" id="dragRegion">
     <span class="title">一纸待办</span>
   </div>
   <div class="window-controls">
@@ -770,6 +765,6 @@ body::before {
 
 <div class="toast" id="toast"></div>
 
-<script src="app.js"></script>
+<script src="app.js?v=3"></script>
 </body>
 </html>

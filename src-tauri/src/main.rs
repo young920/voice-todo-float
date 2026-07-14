@@ -1,3 +1,5 @@
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -335,14 +337,33 @@ fn run_lark_cli(profile: &str, args: &[String]) -> Result<String, String> {
     let cli = find_lark_cli()?;
     let mut full_args = vec!["--profile".to_string(), profile.to_string()];
     full_args.extend_from_slice(args);
-    let output = Command::new(&cli)
-        .current_dir(project_root())
-        .args(&full_args)
+    log(&format!(
+        "运行 lark-cli: {} {}",
+        cli.display(),
+        full_args.join(" ")
+    ));
+
+    let mut cmd = Command::new(&cli);
+    cmd.current_dir(project_root()).args(&full_args);
+
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+    }
+
+    let output = cmd
         .output()
         .map_err(|e| format!("运行 lark-cli 失败: {}", e))?;
 
     let stdout = String::from_utf8_lossy(&output.stdout).to_string();
     let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+    log(&format!(
+        "lark-cli 返回: success={}, stdout={:?}, stderr={:?}",
+        output.status.success(),
+        stdout,
+        stderr
+    ));
 
     if !output.status.success() {
         return Err(format!("lark-cli 错误: {}\n{}", stderr, stdout));

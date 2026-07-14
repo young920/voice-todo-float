@@ -83,8 +83,7 @@ npm run build-win
 ```
 .
 ├── src/              # 前端 UI
-│   ├── index.html
-│   └── app.js
+│   └── index.html    # 已内联 JS 与样式
 ├── src-tauri/        # Rust 后端
 │   ├── src/main.rs
 │   ├── Cargo.toml
@@ -121,7 +120,11 @@ npm run build-win
 
 ## 下载
 
-- **macOS Apple Silicon**: [一纸待办_1.0.0_aarch64.dmg](https://github.com/young920/voice-todo-float/releases/download/v1.0.0/一纸待办_1.0.0_aarch64.dmg)
+推送 `main` 分支后由 GitHub Actions 自动构建，产物上传在 Actions Artifacts 中：
+
+- [最新构建工件](https://github.com/young920/voice-todo-float/actions/workflows/build.yml)
+
+也可以手动构建后从 `src-tauri/target/<target-triple>/release/bundle/` 获取安装包。
 
 ## 打包与发布
 

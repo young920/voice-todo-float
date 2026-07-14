@@ -52,12 +52,12 @@
     },
     "windows": {
       "webviewInstallMode": {
-        "type": "downloadBootstrapper"
+        "type": "embedBootstrapper"
       },
       "nsis": {
-        "installMode": "both",
-        "languages": ["English", "SimpChinese"],
-        "displayLanguageSelector": true,
+        "installMode": "currentUser",
+        "languages": ["SimpChinese"],
+        "displayLanguageSelector": false,
         "compression": "lzma"
       }
     }

@@ -24,7 +24,7 @@ impl Config {
     }
 }
 
-fn config_path() -> PathBuf {
+fn config_dir() -> PathBuf {
     let home = if cfg!(target_os = "windows") {
         std::env::var("USERPROFILE")
             .or_else(|_| std::env::var("HOME"))
@@ -36,7 +36,48 @@ fn config_path() -> PathBuf {
         .join(".hermes")
         .join("scripts")
         .join("voice-todo-float")
-        .join("config.json")
+}
+
+fn config_path() -> PathBuf {
+    config_dir().join("config.json")
+}
+
+fn log(msg: &str) {
+    let dir = config_dir();
+    let _ = std::fs::create_dir_all(&dir);
+    let path = dir.join("app.log");
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs();
+    let line = format!("[{}] {}\n", now, msg);
+    let _ = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&path)
+        .and_then(|mut f| std::io::Write::write_all(&mut f, line.as_bytes()));
+}
+
+fn ensure_config() -> Result<Config, String> {
+    let path = config_path();
+    if path.exists() {
+        return Config::load();
+    }
+
+    let default = Config {
+        base_token: "UB9MbMmHFaJRISs6jwqc5jLtnBz".to_string(),
+        table_id: "tblC5qyGBp6u3HcK".to_string(),
+        profile: "cli_a976ca0e1c39dbda".to_string(),
+    };
+
+    let dir = config_dir();
+    std::fs::create_dir_all(&dir).map_err(|e| format!("创建配置目录失败: {}", e))?;
+    let content =
+        serde_json::to_string_pretty(&default).map_err(|e| format!("序列化配置失败: {}", e))?;
+    std::fs::write(&path, content).map_err(|e| format!("写入配置文件失败: {}", e))?;
+    log(&format!("已创建默认配置文件: {}", path.display()));
+
+    Ok(default)
 }
 
 fn project_root() -> PathBuf {
@@ -639,9 +680,11 @@ fn open_external(app: tauri::AppHandle, url: String) -> Result<(), String> {
 }
 
 fn main() {
-    let config = match Config::load() {
+    log("应用启动");
+    let config = match ensure_config() {
         Ok(c) => c,
         Err(e) => {
+            log(&format!("配置加载失败: {}", e));
             eprintln!("配置加载失败: {}", e);
             std::process::exit(1);
         }

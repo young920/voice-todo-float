@@ -9,6 +9,16 @@ use std::time::Duration;
 use tauri::Manager;
 use tauri_plugin_opener::OpenerExt;
 
+#[cfg(target_os = "windows")]
+extern "system" {
+    fn MessageBoxW(
+        hWnd: *const std::ffi::c_void,
+        lpText: *const u16,
+        lpCaption: *const u16,
+        uType: u32,
+    ) -> i32;
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 struct Config {
     #[serde(rename = "base_token")]
@@ -61,10 +71,61 @@ fn log(msg: &str) {
         .and_then(|mut f| std::io::Write::write_all(&mut f, line.as_bytes()));
 }
 
+fn show_error_dialog(title: &str, message: &str) {
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::ffi::OsStrExt;
+        let title_w: Vec<u16> = std::ffi::OsStr::new(title)
+            .encode_wide()
+            .chain(Some(0))
+            .collect();
+        let message_w: Vec<u16> = std::ffi::OsStr::new(message)
+            .encode_wide()
+            .chain(Some(0))
+            .collect();
+        unsafe {
+            MessageBoxW(
+                std::ptr::null(),
+                message_w.as_ptr(),
+                title_w.as_ptr(),
+                0x00000010 | 0x00000000,
+            );
+        }
+    }
+    #[cfg(target_os = "macos")]
+    {
+        let script = format!(
+            "display dialog \"{}\" with title \"{}\" buttons {{\"OK\"}} default button \"OK\" with icon stop",
+            message.replace("\"", "\\\""),
+            title.replace("\"", "\\\"")
+        );
+        let _ = Command::new("osascript").arg("-e").arg(script).output();
+    }
+}
+
 fn ensure_config() -> Result<Config, String> {
     let path = config_path();
     if path.exists() {
-        return Config::load();
+        let config = Config::load()?;
+        if config.base_token.trim().is_empty() {
+            return Err(format!(
+                "base_token 不能为空，请填写配置文件：{}",
+                path.display()
+            ));
+        }
+        if config.table_id.trim().is_empty() {
+            return Err(format!(
+                "table_id 不能为空，请填写配置文件：{}",
+                path.display()
+            ));
+        }
+        if config.profile.trim().is_empty() {
+            return Err(format!(
+                "profile 不能为空，请填写配置文件：{}",
+                path.display()
+            ));
+        }
+        return Ok(config);
     }
 
     let dir = config_dir();
@@ -796,6 +857,7 @@ fn main() {
         Err(e) => {
             log(&format!("配置加载失败: {}", e));
             eprintln!("配置加载失败: {}", e);
+            show_error_dialog("一纸待办 - 配置错误", &e);
             std::process::exit(1);
         }
     };

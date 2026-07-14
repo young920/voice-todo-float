@@ -5,6 +5,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::process::Command;
 use std::sync::Mutex;
+use std::time::Duration;
 use tauri::Manager;
 use tauri_plugin_opener::OpenerExt;
 
@@ -299,16 +300,36 @@ fn find_lark_cli() -> Result<PathBuf, String> {
 }
 
 fn get_lark_cli_version(path: &PathBuf) -> Option<Vec<u32>> {
+    use std::process::Stdio;
+    use wait_timeout::ChildExt;
+
     let mut cmd = Command::new(path);
-    cmd.arg("--version");
+    cmd.arg("--version")
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
     #[cfg(target_os = "windows")]
     {
         use std::os::windows::process::CommandExt;
         cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
     }
-    let output = cmd.output().ok()?;
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    parse_version(&stdout)
+
+    let mut child = cmd.spawn().ok()?;
+    match child.wait_timeout(Duration::from_secs(10)).ok()?? {
+        status if !status.success() => None,
+        _ => {
+            let stdout = child
+                .stdout
+                .take()
+                .and_then(|mut out| {
+                    let mut s = String::new();
+                    std::io::Read::read_to_string(&mut out, &mut s)
+                        .ok()
+                        .map(|_| s)
+                })
+                .unwrap_or_default();
+            parse_version(&stdout)
+        }
+    }
 }
 
 fn parse_version(text: &str) -> Option<Vec<u32>> {
@@ -341,6 +362,9 @@ fn is_lark_cli_compatible(path: &PathBuf) -> bool {
 }
 
 fn run_lark_cli(profile: &str, args: &[String]) -> Result<String, String> {
+    use std::process::Stdio;
+    use wait_timeout::ChildExt;
+
     let cli = find_lark_cli()?;
     let mut full_args = vec!["--profile".to_string(), profile.to_string()];
     full_args.extend_from_slice(args);
@@ -351,7 +375,10 @@ fn run_lark_cli(profile: &str, args: &[String]) -> Result<String, String> {
     ));
 
     let mut cmd = Command::new(&cli);
-    cmd.current_dir(project_root()).args(&full_args);
+    cmd.current_dir(project_root())
+        .args(&full_args)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
 
     #[cfg(target_os = "windows")]
     {
@@ -359,20 +386,41 @@ fn run_lark_cli(profile: &str, args: &[String]) -> Result<String, String> {
         cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
     }
 
-    let output = cmd
-        .output()
+    let mut child = cmd
+        .spawn()
         .map_err(|e| format!("运行 lark-cli 失败: {}", e))?;
 
-    let stdout = String::from_utf8_lossy(&output.stdout).to_string();
-    let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+    let status = match child
+        .wait_timeout(Duration::from_secs(30))
+        .map_err(|e| format!("等待 lark-cli 失败: {}", e))?
+    {
+        Some(s) => s,
+        None => {
+            let _ = child.kill();
+            return Err(
+                "运行 lark-cli 超时（30秒）。请检查 lark-cli 是否已登录：lark-cli auth login"
+                    .to_string(),
+            );
+        }
+    };
+
+    let mut stdout = String::new();
+    if let Some(mut out) = child.stdout.take() {
+        let _ = std::io::Read::read_to_string(&mut out, &mut stdout);
+    }
+    let mut stderr = String::new();
+    if let Some(mut err) = child.stderr.take() {
+        let _ = std::io::Read::read_to_string(&mut err, &mut stderr);
+    }
+
     log(&format!(
         "lark-cli 返回: success={}, stdout={:?}, stderr={:?}",
-        output.status.success(),
+        status.success(),
         stdout,
         stderr
     ));
 
-    if !output.status.success() {
+    if !status.success() {
         return Err(format!("lark-cli 错误: {}\n{}", stderr, stdout));
     }
 

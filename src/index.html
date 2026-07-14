@@ -76,6 +76,42 @@ body::before {
 .window.collapsed .title-bar {
   border-bottom: none;
   background: rgba(255,255,255,0.7);
+  padding: 0 12px;
+}
+
+.window.collapsed .title-bar .drag-region {
+  flex: 0 0 auto;
+  padding-right: 8px;
+}
+
+.window.collapsed .title-bar .title {
+  display: none;
+}
+
+.window.collapsed .collapsed-icon {
+  display: flex;
+}
+
+.window.collapsed .window-controls {
+  gap: 6px;
+  flex: 1;
+  justify-content: flex-end;
+}
+
+.window.collapsed .btn-search,
+.window.collapsed .btn-pin,
+.window.collapsed .btn-minimize {
+  display: none;
+}
+
+.window.collapsed .window-btn {
+  width: 24px;
+  height: 24px;
+  font-size: 12px;
+}
+
+.window.collapsed .btn-collapse {
+  transform: rotate(180deg);
 }
 
 .window.collapsed {
@@ -136,6 +172,22 @@ body::before {
   color: var(--cinnabar);
   font-size: 9px;
   vertical-align: middle;
+}
+
+.collapsed-icon {
+  display: none;
+  font-family: 'Noto Serif SC', 'Songti SC', serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--cinnabar);
+  width: 26px;
+  height: 26px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(184, 61, 47, 0.25);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.55);
+  pointer-events: none;
 }
 
 .window-controls {
@@ -715,6 +767,7 @@ body::before {
 <div class="title-bar" id="titleBar">
   <div class="drag-region" id="dragRegion" data-tauri-drag-region>
     <span class="title">一纸待办</span>
+    <span class="collapsed-icon">纸</span>
   </div>
   <div class="window-controls" id="windowControls">
     <button class="window-btn btn-add" id="btnAdd" title="添加">+</button>
@@ -1404,6 +1457,8 @@ async function toggleAlwaysOnTop() {
 
 async function toggleCollapse() {
   isCollapsed = !isCollapsed;
+  const win = document.getElementById('window');
+  if (win) win.classList.toggle('collapsed', isCollapsed);
   try {
     await invoke('toggle_collapse', { collapsed: isCollapsed });
   } catch (error) {

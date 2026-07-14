@@ -25,15 +25,18 @@ impl Config {
 }
 
 fn config_path() -> PathBuf {
-    if let Ok(home) = std::env::var("HOME") {
-        PathBuf::from(home)
-            .join(".hermes")
-            .join("scripts")
-            .join("voice-todo-float")
-            .join("config.json")
+    let home = if cfg!(target_os = "windows") {
+        std::env::var("USERPROFILE")
+            .or_else(|_| std::env::var("HOME"))
+            .map(PathBuf::from)
     } else {
-        PathBuf::from("config.json")
-    }
+        std::env::var("HOME").map(PathBuf::from)
+    };
+    home.unwrap_or_else(|_| PathBuf::from("."))
+        .join(".hermes")
+        .join("scripts")
+        .join("voice-todo-float")
+        .join("config.json")
 }
 
 fn project_root() -> PathBuf {

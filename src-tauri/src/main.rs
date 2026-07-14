@@ -67,20 +67,25 @@ fn ensure_config() -> Result<Config, String> {
         return Config::load();
     }
 
-    let default = Config {
-        base_token: "UB9MbMmHFaJRISs6jwqc5jLtnBz".to_string(),
-        table_id: "tblC5qyGBp6u3HcK".to_string(),
-        profile: "cli_a976ca0e1c39dbda".to_string(),
-    };
-
     let dir = config_dir();
     std::fs::create_dir_all(&dir).map_err(|e| format!("创建配置目录失败: {}", e))?;
+    let template = serde_json::json!({
+        "base_token": "",
+        "table_id": "",
+        "profile": ""
+    });
     let content =
-        serde_json::to_string_pretty(&default).map_err(|e| format!("序列化配置失败: {}", e))?;
+        serde_json::to_string_pretty(&template).map_err(|e| format!("序列化配置失败: {}", e))?;
     std::fs::write(&path, content).map_err(|e| format!("写入配置文件失败: {}", e))?;
-    log(&format!("已创建默认配置文件: {}", path.display()));
+    log(&format!(
+        "已创建配置文件模板: {}，请填写 base_token、table_id、profile 后重启",
+        path.display()
+    ));
 
-    Ok(default)
+    Err(format!(
+        "配置文件不存在，已创建模板：{}。请填写 base_token、table_id、profile 后重启应用。",
+        path.display()
+    ))
 }
 
 fn project_root() -> PathBuf {
@@ -106,6 +111,22 @@ fn tmp_json_path(prefix: &str) -> (PathBuf, String) {
         .to_string_lossy()
         .to_string();
     (file, rel)
+}
+
+struct TmpGuard {
+    path: PathBuf,
+}
+
+impl TmpGuard {
+    fn new(path: PathBuf) -> Self {
+        Self { path }
+    }
+}
+
+impl Drop for TmpGuard {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_file(&self.path);
+    }
 }
 
 struct AppState {
@@ -179,10 +200,21 @@ impl<T> ApiResponse<T> {
 }
 
 fn lark_cli_name() -> &'static str {
-    if cfg!(target_os = "windows") {
-        "lark-cli.exe"
+    "lark-cli"
+}
+
+fn build_command_with_executable(path: &PathBuf) -> Command {
+    let ext = path
+        .extension()
+        .and_then(|s| s.to_str())
+        .unwrap_or("")
+        .to_lowercase();
+    if cfg!(target_os = "windows") && (ext == "cmd" || ext == "bat") {
+        let mut cmd = Command::new("cmd.exe");
+        cmd.arg("/c").arg(path);
+        cmd
     } else {
-        "lark-cli"
+        Command::new(path)
     }
 }
 
@@ -303,7 +335,7 @@ fn get_lark_cli_version(path: &PathBuf) -> Option<Vec<u32>> {
     use std::process::Stdio;
     use wait_timeout::ChildExt;
 
-    let mut cmd = Command::new(path);
+    let mut cmd = build_command_with_executable(path);
     cmd.arg("--version")
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
@@ -374,7 +406,7 @@ fn run_lark_cli(profile: &str, args: &[String]) -> Result<String, String> {
         full_args.join(" ")
     ));
 
-    let mut cmd = Command::new(&cli);
+    let mut cmd = build_command_with_executable(&cli);
     cmd.current_dir(project_root())
         .args(&full_args)
         .stdout(Stdio::piped())
@@ -567,6 +599,7 @@ fn create_task(
     if let Err(e) = std::fs::write(&json_file, json_data.to_string()) {
         return ApiResponse::err(format!("写入临时文件失败: {}", e));
     }
+    let _guard = TmpGuard::new(json_file.clone());
 
     let args = vec![
         "base".to_string(),
@@ -619,6 +652,7 @@ fn update_task(
     ) {
         return ApiResponse::err(format!("写入临时文件失败: {}", e));
     }
+    let _guard = TmpGuard::new(json_file.clone());
 
     let args = vec![
         "base".to_string(),

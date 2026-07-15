@@ -1005,6 +1005,20 @@ async function addTask(name, priority = '中', deadline = null) {
 }
 
 async function updateTask(id, name, priority, deadline, link, note) {
+  const task = tasks.find(t => t.id === id);
+  if (!task) return;
+  const oldTask = { ...task };
+  const oldEditingId = editingTaskId;
+
+  // Optimistic update: immediately show new values and exit edit mode
+  task.name = name;
+  task.priority = priority;
+  task.deadline = deadline ? deadline + ' 00:00:00' : null;
+  task.link = link;
+  task.note = note;
+  editingTaskId = null;
+  renderTasks();
+
   showLoading();
   try {
     const payload = { 'id': id, '任务名称': name };
@@ -1015,12 +1029,22 @@ async function updateTask(id, name, priority, deadline, link, note) {
     const data = await invoke('update_task', { payload });
     if (data.code === 0) {
       showToast('已更新');
-      await loadTasks();
+      hideLoading();
+      await loadTasks({ silent: true });
     } else {
+      // Rollback on failure
+      Object.assign(task, oldTask);
+      editingTaskId = oldEditingId;
+      renderTasks();
       showToast(data.msg || '更新失败');
+      showError('更新失败：' + (data.msg || '未知错误'));
     }
   } catch (error) {
+    Object.assign(task, oldTask);
+    editingTaskId = oldEditingId;
+    renderTasks();
     showToast('更新失败');
+    showError('更新失败：' + (error.message || error));
   } finally {
     hideLoading();
   }
@@ -1031,6 +1055,14 @@ async function toggleTaskStatus(id) {
   if (!task) return;
   const newStatus = task.status === '已完成' ? '待办' : '已完成';
   const completedAt = newStatus === '已完成' ? formatDateTimeLocal(new Date()) : null;
+  const oldStatus = task.status;
+  const oldCompletedAt = task.completed_at;
+
+  // Optimistic update
+  task.status = newStatus;
+  task.completed_at = completedAt;
+  renderTasks();
+
   showLoading();
   try {
     const payload = { 'id': id, '状态': newStatus };
@@ -1039,11 +1071,19 @@ async function toggleTaskStatus(id) {
     const data = await invoke('update_task', { payload });
     if (data.code === 0) {
       showToast(newStatus === '已完成' ? '已批' : '已恢复');
-      await loadTasks();
+      hideLoading();
+      await loadTasks({ silent: true });
     } else {
+      // Rollback
+      task.status = oldStatus;
+      task.completed_at = oldCompletedAt;
+      renderTasks();
       showToast(data.msg || '更新失败');
     }
   } catch (error) {
+    task.status = oldStatus;
+    task.completed_at = oldCompletedAt;
+    renderTasks();
     showToast('更新失败');
   } finally {
     hideLoading();
@@ -1051,17 +1091,38 @@ async function toggleTaskStatus(id) {
 }
 
 async function deleteTask(id) {
+  const index = tasks.findIndex(t => t.id === id);
+  const oldTask = index >= 0 ? tasks[index] : null;
+
+  // Optimistic update
+  if (index >= 0) {
+    tasks.splice(index, 1);
+    renderTasks();
+  }
+
   showLoading();
   try {
     const data = await invoke('delete_task', { id });
     if (data.code === 0) {
       showToast('已删除');
-      await loadTasks();
+      hideLoading();
+      await loadTasks({ silent: true });
     } else {
+      // Rollback
+      if (oldTask) {
+        tasks.splice(index, 0, oldTask);
+        renderTasks();
+      }
       showToast(data.msg || '删除失败');
+      showError('删除失败：' + (data.msg || '未知错误'));
     }
   } catch (error) {
+    if (oldTask) {
+      tasks.splice(index, 0, oldTask);
+      renderTasks();
+    }
     showToast('删除失败');
+    showError('删除失败：' + (error.message || error));
   } finally {
     hideLoading();
   }
@@ -1422,8 +1483,6 @@ function saveEdit(id) {
   if (newName) {
     updateTask(id, newName, newPriority, newDeadline, newLink, newNote);
   }
-  editingTaskId = null;
-  renderTasks();
 }
 
 function cancelEdit() {

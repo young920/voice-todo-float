@@ -940,8 +940,8 @@ function hideError() {
   if (el) el.classList.remove('show');
 }
 
-async function loadTasks() {
-  showLoading();
+async function loadTasks(opts = {}) {
+  if (!opts.silent) showLoading();
   hideError();
   try {
     const data = await invoke('get_tasks');
@@ -959,7 +959,7 @@ async function loadTasks() {
     console.error('Load error:', error);
     showError('无法连接到后端：' + (error.message || error));
   } finally {
-    hideLoading();
+    if (!opts.silent) hideLoading();
   }
 }
 
@@ -971,13 +971,34 @@ async function addTask(name, priority = '中', deadline = null) {
   try {
     const data = await invoke('create_task', { name: cleanName, deadline: finalDeadline, priority });
     if (data.code === 0) {
+      isAdding = false;
       showToast('已添加');
-      await loadTasks();
+      // Optimistic update: show the new task immediately before slow refresh
+      const now = new Date().toISOString();
+      const tempTask = {
+        id: 'temp-' + Date.now(),
+        name: cleanName,
+        status: '待办',
+        deadline: finalDeadline,
+        priority: priority,
+        note: '',
+        link: '',
+        created_at: now,
+        completed_at: null,
+        task_type: finalDeadline ? 'scheduled' : 'someday'
+      };
+      tasks.unshift(tempTask);
+      renderTasks();
+      hideLoading();
+      // Refresh in background to get real record id
+      await loadTasks({ silent: true });
     } else {
       showToast(data.msg || '添加失败');
+      showError('添加失败：' + (data.msg || '未知错误'));
     }
   } catch (error) {
     showToast('添加失败');
+    showError('添加失败：' + (error.message || error));
   } finally {
     hideLoading();
   }
@@ -1362,8 +1383,6 @@ function saveAdd() {
   const priority = prioritySelect ? prioritySelect.value : '中';
   const deadline = deadlineInput ? deadlineInput.value : null;
   if (name) {
-    isAdding = false;
-    renderTasks();
     addTask(name, priority, deadline);
   }
 }

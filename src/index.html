@@ -1268,10 +1268,10 @@ function renderTasks() {
   const anytime = filterTasks(anytimeRaw);
   const completed = filterTasks(completedRaw);
 
-  const renderList = (list, elId) => {
+  const renderList = (list, elId, tabName) => {
     const el = document.getElementById(elId);
     if (!el) return;
-    const addHtml = isAdding ? renderAddTask() : '';
+    const addHtml = (isAdding && tabName === currentTab) ? renderAddTask() : '';
     if (list.length === 0 && !isAdding) {
       el.innerHTML = `
         <div class="empty-state">
@@ -1284,11 +1284,11 @@ function renderTasks() {
     }
   };
 
-  renderList(all, 'allList');
-  renderList(today, 'todayList');
-  renderList(scheduled, 'scheduledList');
-  renderList(anytime, 'anytimeList');
-  renderList(completed, 'completedList');
+  renderList(all, 'allList', 'all');
+  renderList(today, 'todayList', 'today');
+  renderList(scheduled, 'scheduledList', 'scheduled');
+  renderList(anytime, 'anytimeList', 'anytime');
+  renderList(completed, 'completedList', 'completed');
 
   document.getElementById('allBadge').textContent = allRaw.length;
   document.getElementById('todayBadge').textContent = todayRaw.length;
@@ -1354,9 +1354,10 @@ function startAdd() {
 }
 
 function saveAdd() {
-  const input = document.getElementById('addInput');
-  const prioritySelect = document.getElementById('addPriority');
-  const deadlineInput = document.getElementById('addDeadline');
+  const panel = document.getElementById(`panel-${currentTab}`);
+  const input = panel ? panel.querySelector('#addInput') : null;
+  const prioritySelect = panel ? panel.querySelector('#addPriority') : null;
+  const deadlineInput = panel ? panel.querySelector('#addDeadline') : null;
   const name = input ? input.value.trim() : '';
   const priority = prioritySelect ? prioritySelect.value : '中';
   const deadline = deadlineInput ? deadlineInput.value : null;

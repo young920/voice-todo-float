@@ -794,21 +794,26 @@ fn toggle_collapse(state: tauri::State<AppState>, collapsed: bool) -> Result<(),
     let window = state.main_window.lock().map_err(|e| e.to_string())?;
     if let Some(w) = window.as_ref() {
         if collapsed {
-            // Save current size before collapsing
+            // Save current logical size before collapsing
             if let Ok(size) = w.inner_size() {
-                let size: tauri::LogicalSize<f64> = size.to_logical(w.scale_factor().unwrap_or(1.0));
-                state.expanded_width.store(size.width as u32, Ordering::Relaxed);
-                state.expanded_height.store(size.height as u32, Ordering::Relaxed);
+                let size: tauri::LogicalSize<f64> =
+                    size.to_logical(w.scale_factor().unwrap_or(1.0));
+                state
+                    .expanded_width
+                    .store(size.width as u32, Ordering::Relaxed);
+                state
+                    .expanded_height
+                    .store(size.height as u32, Ordering::Relaxed);
             }
-            w.set_size(tauri::Size::Physical(tauri::PhysicalSize {
-                width: 360,
-                height: 52,
+            w.set_size(tauri::Size::Logical(tauri::LogicalSize {
+                width: 360.0,
+                height: 52.0,
             }))
             .map_err(|e| e.to_string())?;
         } else {
-            let width = state.expanded_width.load(Ordering::Relaxed).max(360);
-            let height = state.expanded_height.load(Ordering::Relaxed).max(500);
-            w.set_size(tauri::Size::Physical(tauri::PhysicalSize { width, height }))
+            let width = state.expanded_width.load(Ordering::Relaxed).max(360) as f64;
+            let height = state.expanded_height.load(Ordering::Relaxed).max(500) as f64;
+            w.set_size(tauri::Size::Logical(tauri::LogicalSize { width, height }))
                 .map_err(|e| e.to_string())?;
         }
     }

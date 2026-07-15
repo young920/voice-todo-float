@@ -1305,6 +1305,39 @@ function bindDynamicEvents() {
     addInput.addEventListener('keydown', handleAddKey);
   }
 
+  const saveAddBtn = document.querySelector('[data-action="saveAdd"]');
+  if (saveAddBtn) {
+    saveAddBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      saveAdd();
+    });
+  }
+
+  const cancelAddBtn = document.querySelector('[data-action="cancelAdd"]');
+  if (cancelAddBtn) {
+    cancelAddBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      cancelAdd();
+    });
+  }
+
+  const saveEditBtn = document.querySelector('[data-action="saveEdit"]');
+  if (saveEditBtn) {
+    const id = saveEditBtn.getAttribute('data-task-id');
+    saveEditBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (id) saveEdit(id);
+    });
+  }
+
+  const cancelEditBtn = document.querySelector('[data-action="cancelEdit"]');
+  if (cancelEditBtn) {
+    cancelEditBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      cancelEdit();
+    });
+  }
+
   if (editingTaskId) {
     const editInput = document.getElementById(`editInput-${editingTaskId}`);
     if (editInput) {
@@ -1329,6 +1362,7 @@ function saveAdd() {
   const deadline = deadlineInput ? deadlineInput.value : null;
   if (name) {
     isAdding = false;
+    renderTasks();
     addTask(name, priority, deadline);
   }
 }
@@ -1455,6 +1489,8 @@ async function toggleAlwaysOnTop() {
   }
 }
 
+let savedScrollTop = 0;
+
 async function toggleCollapse() {
   isCollapsed = !isCollapsed;
   const win = document.getElementById('window');
@@ -1463,6 +1499,18 @@ async function toggleCollapse() {
     await invoke('toggle_collapse', { collapsed: isCollapsed });
   } catch (error) {
     console.error('Collapse error:', error);
+  }
+
+  if (!isCollapsed) {
+    const content = document.querySelector('.content');
+    if (content) {
+      requestAnimationFrame(() => {
+        content.scrollTop = savedScrollTop;
+      });
+    }
+  } else {
+    const content = document.querySelector('.content');
+    if (content) savedScrollTop = content.scrollTop;
   }
 }
 

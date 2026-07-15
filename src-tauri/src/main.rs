@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::process::Command;
+use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Mutex;
 use std::time::Duration;
 use tauri::Manager;
@@ -193,6 +194,8 @@ impl Drop for TmpGuard {
 struct AppState {
     main_window: Mutex<Option<tauri::WebviewWindow>>,
     config: Config,
+    expanded_width: AtomicU32,
+    expanded_height: AtomicU32,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -791,17 +794,22 @@ fn toggle_collapse(state: tauri::State<AppState>, collapsed: bool) -> Result<(),
     let window = state.main_window.lock().map_err(|e| e.to_string())?;
     if let Some(w) = window.as_ref() {
         if collapsed {
+            // Save current size before collapsing
+            if let Ok(size) = w.inner_size() {
+                let size: tauri::LogicalSize<f64> = size.to_logical(w.scale_factor().unwrap_or(1.0));
+                state.expanded_width.store(size.width as u32, Ordering::Relaxed);
+                state.expanded_height.store(size.height as u32, Ordering::Relaxed);
+            }
             w.set_size(tauri::Size::Physical(tauri::PhysicalSize {
                 width: 360,
                 height: 52,
             }))
             .map_err(|e| e.to_string())?;
         } else {
-            w.set_size(tauri::Size::Physical(tauri::PhysicalSize {
-                width: 360,
-                height: 500,
-            }))
-            .map_err(|e| e.to_string())?;
+            let width = state.expanded_width.load(Ordering::Relaxed).max(360);
+            let height = state.expanded_height.load(Ordering::Relaxed).max(500);
+            w.set_size(tauri::Size::Physical(tauri::PhysicalSize { width, height }))
+                .map_err(|e| e.to_string())?;
         }
     }
     Ok(())
@@ -888,6 +896,8 @@ fn main() {
             app.manage(AppState {
                 main_window: Mutex::new(Some(window)),
                 config: app_config.clone(),
+                expanded_width: AtomicU32::new(360),
+                expanded_height: AtomicU32::new(500),
             });
             Ok(())
         })

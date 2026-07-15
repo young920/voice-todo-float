@@ -967,36 +967,52 @@ async function addTask(name, priority = '中', deadline = null) {
   const autoDeadline = extractDeadline(name);
   const cleanName = cleanTaskName(name);
   const finalDeadline = deadline ? `${deadline} 00:00:00` : autoDeadline;
+  const tempId = 'temp-' + Date.now();
+
+  // Optimistic update: show the new task immediately before slow save
+  const now = new Date().toISOString();
+  const tempTask = {
+    id: tempId,
+    name: cleanName,
+    status: '待办',
+    deadline: finalDeadline,
+    priority: priority,
+    note: '',
+    link: '',
+    created_at: now,
+    completed_at: null,
+    task_type: finalDeadline ? 'scheduled' : 'someday'
+  };
+  tasks.unshift(tempTask);
+  isAdding = false;
+  renderTasks();
+
   showLoading();
   try {
     const data = await invoke('create_task', { name: cleanName, deadline: finalDeadline, priority });
-    if (data.code === 0) {
-      isAdding = false;
+    if (data.code === 0 && data.data) {
       showToast('已添加');
-      // Optimistic update: show the new task immediately before slow refresh
-      const now = new Date().toISOString();
-      const tempTask = {
-        id: 'temp-' + Date.now(),
-        name: cleanName,
-        status: '待办',
-        deadline: finalDeadline,
-        priority: priority,
-        note: '',
-        link: '',
-        created_at: now,
-        completed_at: null,
-        task_type: finalDeadline ? 'scheduled' : 'someday'
-      };
-      tasks.unshift(tempTask);
+      // Replace temp task with server-returned real task
+      const serverTask = data.data;
+      const tempIdx = tasks.findIndex(t => t.id === tempId);
+      if (tempIdx >= 0) {
+        tasks[tempIdx] = serverTask;
+      } else {
+        tasks.unshift(serverTask);
+      }
       renderTasks();
-      hideLoading();
-      // Refresh in background to get real record id
-      await loadTasks({ silent: true });
     } else {
+      // Remove temp task on failure
+      const tempIdx = tasks.findIndex(t => t.id === tempId);
+      if (tempIdx >= 0) tasks.splice(tempIdx, 1);
+      renderTasks();
       showToast(data.msg || '添加失败');
       showError('添加失败：' + (data.msg || '未知错误'));
     }
   } catch (error) {
+    const tempIdx = tasks.findIndex(t => t.id === tempId);
+    if (tempIdx >= 0) tasks.splice(tempIdx, 1);
+    renderTasks();
     showToast('添加失败');
     showError('添加失败：' + (error.message || error));
   } finally {
@@ -1027,10 +1043,16 @@ async function updateTask(id, name, priority, deadline, link, note) {
     if (link !== undefined) payload['链接'] = link;
     if (note !== undefined) payload['备注'] = note;
     const data = await invoke('update_task', { payload });
-    if (data.code === 0) {
+    if (data.code === 0 && data.data) {
+      // Use server-returned task to ensure local state matches real data
+      const serverTask = data.data;
+      const idx = tasks.findIndex(t => t.id === id);
+      if (idx >= 0) {
+        tasks[idx] = serverTask;
+      }
+      editingTaskId = null;
+      renderTasks();
       showToast('已更新');
-      hideLoading();
-      await loadTasks({ silent: true });
     } else {
       // Rollback on failure
       Object.assign(task, oldTask);
@@ -1069,10 +1091,15 @@ async function toggleTaskStatus(id) {
     if (completedAt) payload['完成时间'] = completedAt;
     else payload['完成时间'] = null;
     const data = await invoke('update_task', { payload });
-    if (data.code === 0) {
+    if (data.code === 0 && data.data) {
+      // Use server-returned task to ensure local state matches real data
+      const serverTask = data.data;
+      const idx = tasks.findIndex(t => t.id === id);
+      if (idx >= 0) {
+        tasks[idx] = serverTask;
+      }
+      renderTasks();
       showToast(newStatus === '已完成' ? '已批' : '已恢复');
-      hideLoading();
-      await loadTasks({ silent: true });
     } else {
       // Rollback
       task.status = oldStatus;
@@ -1105,8 +1132,7 @@ async function deleteTask(id) {
     const data = await invoke('delete_task', { id });
     if (data.code === 0) {
       showToast('已删除');
-      hideLoading();
-      await loadTasks({ silent: true });
+      // Don't loadTasks immediately; Feishu may return stale data
     } else {
       // Rollback
       if (oldTask) {

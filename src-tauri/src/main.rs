@@ -237,6 +237,22 @@ struct RecordListData {
     record_id_list: Vec<String>,
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+struct RecordData {
+    #[serde(rename = "record_id")]
+    record_id: String,
+    fields: HashMap<String, serde_json::Value>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct UpsertRecordData {
+    record: RecordData,
+    #[serde(default)]
+    created: bool,
+    #[serde(default)]
+    updated: bool,
+}
+
 #[derive(Serialize, Debug)]
 struct ApiResponse<T> {
     code: i32,
@@ -260,6 +276,56 @@ impl<T> ApiResponse<T> {
             data: None,
             msg: Some(msg.into()),
         }
+    }
+}
+
+fn fields_map_to_task(record_id: String, fields_map: HashMap<String, serde_json::Value>) -> Task {
+    let get_str = |key: &str| -> String {
+        fields_map
+            .get(key)
+            .and_then(|v| {
+                if v.is_string() {
+                    v.as_str().map(|s| s.to_string())
+                } else if v.is_array() && v.as_array().map(|a| a.len()) == Some(1) {
+                    v.as_array()
+                        .and_then(|a| a.first())
+                        .and_then(|f| f.as_str().map(|s| s.to_string()))
+                } else {
+                    None
+                }
+            })
+            .unwrap_or_default()
+    };
+
+    let get_opt_str = |key: &str| -> Option<String> {
+        fields_map.get(key).and_then(|v| {
+            if v.is_string() && v.as_str().map(|s| !s.is_empty()).unwrap_or(false) {
+                v.as_str().map(|s| s.to_string())
+            } else if v.is_array() && v.as_array().map(|a| a.len()) == Some(1) {
+                v.as_array()
+                    .and_then(|a| a.first())
+                    .and_then(|f| f.as_str().map(|s| s.to_string()))
+            } else {
+                None
+            }
+        })
+    };
+
+    let deadline = get_opt_str("截止时间");
+    let status = get_str("状态");
+    let task_type = if deadline.is_some() { "scheduled" } else { "someday" };
+
+    Task {
+        id: record_id,
+        name: get_str("任务名称"),
+        status: if status.is_empty() { "待办".to_string() } else { status },
+        deadline,
+        priority: get_str("优先级"),
+        note: get_str("备注"),
+        link: get_str("链接"),
+        created_at: get_opt_str("创建时间"),
+        completed_at: get_opt_str("完成时间"),
+        task_type: task_type.to_string(),
     }
 }
 
@@ -575,62 +641,7 @@ fn get_tasks(state: tauri::State<AppState>) -> ApiResponse<Vec<Task>> {
                 fields_map.insert(field_name.clone(), val.clone());
             }
         }
-
-        let get_str = |key: &str| -> String {
-            fields_map
-                .get(key)
-                .and_then(|v| {
-                    if v.is_string() {
-                        v.as_str().map(|s| s.to_string())
-                    } else if v.is_array() && v.as_array().map(|a| a.len()) == Some(1) {
-                        v.as_array()
-                            .and_then(|a| a.first())
-                            .and_then(|f| f.as_str().map(|s| s.to_string()))
-                    } else {
-                        None
-                    }
-                })
-                .unwrap_or_default()
-        };
-
-        let get_opt_str = |key: &str| -> Option<String> {
-            fields_map.get(key).and_then(|v| {
-                if v.is_string() && v.as_str().map(|s| !s.is_empty()).unwrap_or(false) {
-                    v.as_str().map(|s| s.to_string())
-                } else if v.is_array() && v.as_array().map(|a| a.len()) == Some(1) {
-                    v.as_array()
-                        .and_then(|a| a.first())
-                        .and_then(|f| f.as_str().map(|s| s.to_string()))
-                } else {
-                    None
-                }
-            })
-        };
-
-        let deadline = get_opt_str("截止时间");
-        let status = get_str("状态");
-        let task_type = if deadline.is_some() {
-            "scheduled"
-        } else {
-            "someday"
-        };
-
-        tasks.push(Task {
-            id: record_id,
-            name: get_str("任务名称"),
-            status: if status.is_empty() {
-                "待办".to_string()
-            } else {
-                status
-            },
-            deadline,
-            priority: get_str("优先级"),
-            note: get_str("备注"),
-            link: get_str("链接"),
-            created_at: get_opt_str("创建时间"),
-            completed_at: get_opt_str("完成时间"),
-            task_type: task_type.to_string(),
-        });
+        tasks.push(fields_map_to_task(record_id, fields_map));
     }
 
     ApiResponse::ok(tasks)
@@ -642,7 +653,7 @@ fn create_task(
     name: String,
     deadline: Option<String>,
     priority: String,
-) -> ApiResponse<serde_json::Value> {
+) -> ApiResponse<Task> {
     if name.trim().is_empty() {
         return ApiResponse::err("任务名称不能为空");
     }
@@ -682,7 +693,7 @@ fn create_task(
         Err(e) => return ApiResponse::err(e),
     };
 
-    let resp: LarkResponse<serde_json::Value> = match serde_json::from_str(&output) {
+    let resp: LarkResponse<RecordListData> = match serde_json::from_str(&output) {
         Ok(r) => r,
         Err(e) => return ApiResponse::err(format!("解析响应失败: {}\n{}", e, output)),
     };
@@ -695,14 +706,29 @@ fn create_task(
         );
     }
 
-    ApiResponse::ok(serde_json::json!({}))
+    let raw = match resp.data {
+        Some(d) => d,
+        None => return ApiResponse::err("创建响应缺少记录数据"),
+    };
+
+    let record_id = raw.record_id_list.get(0).cloned().unwrap_or_default();
+    let mut fields_map: HashMap<String, serde_json::Value> = HashMap::new();
+    if let Some(first_row) = raw.data.get(0) {
+        for (field_idx, field_name) in raw.fields.iter().enumerate() {
+            if let Some(val) = first_row.get(field_idx) {
+                fields_map.insert(field_name.clone(), val.clone());
+            }
+        }
+    }
+    let task = fields_map_to_task(record_id, fields_map);
+    ApiResponse::ok(task)
 }
 
 #[tauri::command]
 fn update_task(
     state: tauri::State<AppState>,
     mut payload: std::collections::HashMap<String, serde_json::Value>,
-) -> ApiResponse<serde_json::Value> {
+) -> ApiResponse<Task> {
     let id = match payload.remove("id") {
         Some(serde_json::Value::String(s)) => s,
         _ => return ApiResponse::err("缺少记录 ID"),
@@ -727,7 +753,7 @@ fn update_task(
         "--table-id".to_string(),
         config.table_id.clone(),
         "--record-id".to_string(),
-        id,
+        id.clone(),
         "--json".to_string(),
         format!("@{}", path_str),
     ];
@@ -737,7 +763,7 @@ fn update_task(
         Err(e) => return ApiResponse::err(e),
     };
 
-    let resp: LarkResponse<serde_json::Value> = match serde_json::from_str(&output) {
+    let resp: LarkResponse<UpsertRecordData> = match serde_json::from_str(&output) {
         Ok(r) => r,
         Err(e) => return ApiResponse::err(format!("解析响应失败: {}\n{}", e, output)),
     };
@@ -750,7 +776,13 @@ fn update_task(
         );
     }
 
-    ApiResponse::ok(serde_json::json!({}))
+    let upsert_data = match resp.data {
+        Some(d) => d,
+        None => return ApiResponse::err("更新响应缺少记录数据"),
+    };
+
+    let task = fields_map_to_task(upsert_data.record.record_id, upsert_data.record.fields);
+    ApiResponse::ok(task)
 }
 
 #[tauri::command]

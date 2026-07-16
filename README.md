@@ -19,46 +19,97 @@
 
 ## 前置条件
 
-1. 安装 Rust、Node.js 和 `@tauri-apps/cli`：
-   ```bash
-   npm install
-   ```
+### 1. 通用开发环境
 
-2. 安装并登录飞书 CLI：
-   ```bash
-   npm install -g @larksuite/cli
-   lark-cli auth login
-   ```
-   默认使用的 profile 名称建议与 `lark-cli auth login` 时使用的名称保持一致；如不同，请在配置文件中修改。
+- **Rust**（推荐最新 stable，通过 [rustup](https://rustup.rs/) 安装）
+- **Node.js** 20 或更高版本
+- 克隆仓库后安装 npm 依赖：
+  ```bash
+  npm install
+  ```
 
-3. 准备一个飞书多维表格，包含以下字段：
-   - 任务名称（文本）
-   - 状态（单选：待办 / 进行中 / 已完成）
-   - 优先级（单选：高 / 中 / 低）
-   - 截止时间（日期时间）
-   - 备注（文本）
-   - 链接（文本）
-   - 创建时间（日期时间）
-   - 完成时间（日期时间）
+### 2. 飞书 CLI 与数据表
 
-4. 将 Base 的 `base_token`、`table_id`、lark-cli `profile` 写入本地配置文件：
-   ```bash
-   mkdir -p ~/.hermes/scripts/voice-todo-float
-   cat > ~/.hermes/scripts/voice-todo-float/config.json << 'EOF'
-   {
-     "base_token": "YOUR_BASE_TOKEN",
-     "table_id": "YOUR_TABLE_ID",
-     "profile": "YOUR_LARK_CLI_PROFILE"
-   }
-   EOF
-   ```
-   > 注意：请替换为你自己的 `base_token` 和 `table_id`。该文件位于用户目录下，不会提交到仓库。
+安装并登录飞书官方 CLI：
 
-   macOS 注意：因为 Tauri 应用沙箱限制，`lark-cli` 默认使用 keychain 存储凭证，应用内无法读取。需要执行一次：
-   ```bash
-   lark-cli config keychain-downgrade
-   ```
-   并确保 `~/Library/Application Support/lark-cli` 下的文件当前用户可读。
+```bash
+npm install -g @larksuite/cli
+lark-cli auth login
+```
+
+> 登录时使用的 `profile` 名称需与配置文件中的 `profile` 保持一致。不同 profile 对应不同身份，应用运行时会读取该 profile 的凭证。
+
+准备飞书多维表格，字段要求如下：
+
+| 字段 | 类型 | 可选值 / 说明 |
+|------|------|---------------|
+| 任务名称 | 文本 | 必填 |
+| 状态 | 单选 | 待办 / 进行中 / 已完成 |
+| 优先级 | 单选 | 高 / 中 / 低 |
+| 截止时间 | 日期时间 | 用于区分“计划”与“随时” |
+| 备注 | 文本 | 可空 |
+| 链接 | 文本 | 可空，点击用外部浏览器打开 |
+| 创建时间 | 日期时间 | 创建时自动写入 |
+| 完成时间 | 日期时间 | 状态变为“已完成”时自动写入 |
+
+将 `base_token`、`table_id`、`profile` 写入本地配置文件（不提交到仓库）：
+
+```bash
+mkdir -p ~/.hermes/scripts/voice-todo-float
+cat > ~/.hermes/scripts/voice-todo-float/config.json << 'EOF'
+{
+  "base_token": "YOUR_BASE_TOKEN",
+  "table_id": "YOUR_TABLE_ID",
+  "profile": "YOUR_LARK_CLI_PROFILE"
+}
+EOF
+```
+
+macOS 额外注意：因为 Tauri 应用沙箱限制，`lark-cli` 默认使用 keychain 存储凭证，应用内无法读取。需要执行一次：
+
+```bash
+lark-cli config keychain-downgrade
+```
+
+并确保 `~/Library/Application Support/lark-cli` 下的文件当前用户可读。
+
+### 3. 本地构建额外依赖
+
+#### macOS 本机构建
+
+```bash
+rustup target add aarch64-apple-darwin
+npm run build-mac
+```
+
+#### macOS 交叉编译 Windows 安装包
+
+`npm run build-win` 会调用 `cargo-xwin` 交叉编译到 `x86_64-pc-windows-msvc`。需要提前安装：
+
+```bash
+# 添加 Windows 目标
+rustup target add x86_64-pc-windows-msvc
+
+# 交叉编译工具链
+cargo install cargo-xwin
+
+# LLVM（tauri-winres 需要 llvm-rc、llvm-ar 等）
+# 推荐通过 Homebrew 安装：brew install llvm
+# 并确保 LLVM bin 目录在 PATH 中
+```
+
+#### Windows 本机构建
+
+```bash
+# 安装 NSIS（Tauri 用它来打安装包）
+# 可通过 Chocolatey：choco install nsis
+
+# 安装 Windows 目标并构建
+rustup target add x86_64-pc-windows-msvc
+npm run build-win
+```
+
+Windows 本机还需要 Visual Studio Build Tools 或 Visual Studio（提供 MSVC 链接器）。
 
 ## 开发
 
@@ -69,10 +120,10 @@ npm run dev
 ## 构建
 
 ```bash
-# macOS Apple Silicon
+# macOS Apple Silicon 安装包（.dmg）
 npm run build-mac
 
-# Windows (NSIS 安装包)
+# Windows 安装包（.exe，NSIS）
 npm run build-win
 ```
 
@@ -90,7 +141,8 @@ npm run build-win
 │   └── tauri.conf.json
 ├── assets/           # 图标源文件
 └── .github/workflows/
-    └── build.yml     # GitHub Actions 跨平台构建
+    ├── build.yml          # 交叉平台构建（tauri-action）
+    └── build-tauri.yml    # 原生 Tauri CLI 构建
 ```
 
 ## 配置说明
@@ -113,28 +165,30 @@ npm run build-win
 
 ## 快捷键 / 语音
 
-- 点击标题栏"+"或语音按钮新建任务
+- 点击标题栏"​+"​或语音按钮新建任务
 - 语音识别需以 **"TODOList"** 开头，例如："TODOList 明天下午三点开会，高优先级"
 - 点击任务左侧圆形按钮切换完成状态
-- 任务卡片右侧"改"/"删"按钮用于编辑和删除
+- 任务卡片右侧"改"/​"删"​按钮用于编辑和删除
 
 ## 下载
 
-推送 `main` 分支后由 GitHub Actions 自动构建，产物上传在 Actions Artifacts 中：
+推送 `main` 分支后由 GitHub Actions 自动构建：
 
-- [最新构建工件](https://github.com/young920/voice-todo-float/actions/workflows/build.yml)
+- [Build Tauri](https://github.com/young920/voice-todo-float/actions/workflows/build-tauri.yml) — 使用原生 Tauri CLI，产物为 `macos-dmg` 和 `windows-nsis`
+- [Cross-platform Build](https://github.com/young920/voice-todo-float/actions/workflows/build.yml) — 使用 `tauri-apps/tauri-action`，产物为 `tauri-bundle-macos` 和 `tauri-bundle-windows`
 
-也可以手动构建后从 `src-tauri/target/<target-triple>/release/bundle/` 获取安装包。
+手动构建后从 `src-tauri/target/<target-triple>/release/bundle/` 获取安装包。
 
 ## 打包与发布
 
-仓库已配置 GitHub Actions，推送 `main` 分支后自动构建 macOS 与 Windows 安装包。手动发布：
+仓库已配置两个 GitHub Actions 工作流，推送 `main` 分支后自动构建 macOS 与 Windows 安装包。手动发布步骤：
 
 ```bash
 npm run build-mac
 ```
 
-然后将 `src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/` 下的 `.dmg` 上传到 GitHub Release。
+然后将 `src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/` 下的 `.dmg` 和
+`src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/` 下的 `.exe` 上传到 GitHub Release。
 
 ## 致谢
 

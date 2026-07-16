@@ -1049,17 +1049,35 @@ async function updateTask(id, name, priority, deadline, link, note) {
     const data = await invoke('update_task', { payload });
     if (data.code === 0) {
       showToast('已更新');
-      // Optimistic update is already applied; keep it and don't loadTasks immediately
+      // 后端已保存并拉取最新记录，用实际数据覆盖本地状态，
+      // 但对于刚发送的非空备注/链接，若服务端返回空（可能是 Base 缓存未更新）则保留优化更新并延迟刷新
+      const currentTask = tasks.find(t => t.id === id);
+      if (currentTask && data.data && data.data.id === id) {
+        const serverTask = data.data;
+        const merged = { ...serverTask };
+        // 如果刚发送的是非空备注/链接，服务端返回空，认为缓存未更新，保留优化值
+        if (note && !serverTask.note) merged.note = note;
+        if (link && !serverTask.link) merged.link = link;
+        // 映射后端的 type 字段到前端的 task_type
+        if (serverTask.type && !serverTask.task_type) merged.task_type = serverTask.type;
+        Object.assign(currentTask, merged);
+        renderTasks();
+        if ((note && !serverTask.note) || (link && !serverTask.link)) {
+          setTimeout(() => loadTasks({ silent: true }), 3000);
+        }
+      }
     } else {
       // Rollback on failure
-      Object.assign(task, oldTask);
+      const currentTask = tasks.find(t => t.id === id);
+      if (currentTask) Object.assign(currentTask, oldTask);
       editingTaskId = oldEditingId;
       renderTasks();
       showToast(data.msg || '更新失败');
       showError('更新失败：' + (data.msg || '未知错误'));
     }
   } catch (error) {
-    Object.assign(task, oldTask);
+    const currentTask = tasks.find(t => t.id === id);
+    if (currentTask) Object.assign(currentTask, oldTask);
     editingTaskId = oldEditingId;
     renderTasks();
     showToast('更新失败');
@@ -1090,7 +1108,14 @@ async function toggleTaskStatus(id) {
     const data = await invoke('update_task', { payload });
     if (data.code === 0) {
       showToast(newStatus === '已完成' ? '已批' : '已恢复');
-      // Optimistic update is already applied; keep it and don't loadTasks immediately
+      // 如果后端返回了最新记录，用实际数据覆盖本地状态
+      if (data.data && data.data.id === id) {
+        const currentTask = tasks.find(t => t.id === id);
+        if (currentTask) {
+          Object.assign(currentTask, data.data);
+          renderTasks();
+        }
+      }
     } else {
       // Rollback
       task.status = oldStatus;

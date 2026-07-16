@@ -237,6 +237,100 @@ struct RecordListData {
     record_id_list: Vec<String>,
 }
 
+fn parse_single_record_response(id: &str, output: &str) -> Result<Task, String> {
+    let value: serde_json::Value = serde_json::from_str(output)
+        .map_err(|e| format!("解析 record-get 响应失败: {}\n{}", e, output))?;
+
+    let ok = value.get("ok").and_then(|v| v.as_bool()).unwrap_or(false);
+    if !ok {
+        let msg = value
+            .get("error")
+            .and_then(|e| e.get("message"))
+            .and_then(|m| m.as_str())
+            .unwrap_or("获取记录失败");
+        return Err(msg.to_string());
+    }
+
+    let data = value.get("data").ok_or("record-get 返回空数据")?;
+
+    // Try { record: { fields: {...}, record_id: ... } } first
+    if let Some(record) = data.get("record") {
+        let record_id = record
+            .get("record_id")
+            .and_then(|v| v.as_str())
+            .unwrap_or(id)
+            .to_string();
+        let fields_map: HashMap<String, serde_json::Value> = record
+            .get("fields")
+            .and_then(|v| v.as_object())
+            .cloned()
+            .unwrap_or_default()
+            .into_iter()
+            .collect();
+        return Ok(fields_map_to_task(record_id, fields_map));
+    }
+
+    // Fallback to { data: [[...]], fields: [...], record_id_list: [...] }
+    let data_array = data
+        .get("data")
+        .and_then(|v| v.as_array())
+        .ok_or("record-get 返回格式异常")?;
+    let fields = data
+        .get("fields")
+        .and_then(|v| v.as_array())
+        .ok_or("record-get 返回字段缺失")?;
+    let record_id_list = data
+        .get("record_id_list")
+        .and_then(|v| v.as_array())
+        .map(|arr| {
+            arr.iter()
+                .map(|v| v.as_str().unwrap_or("").to_string())
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+
+    if data_array.is_empty() {
+        return Err("record-get 未返回记录".to_string());
+    }
+
+    let record_id = record_id_list
+        .get(0)
+        .cloned()
+        .unwrap_or_else(|| id.to_string());
+    let mut fields_map: HashMap<String, serde_json::Value> = HashMap::new();
+    if let Some(row) = data_array.get(0) {
+        if let Some(row_array) = row.as_array() {
+            for (field_idx, field_name) in fields.iter().enumerate() {
+                if let Some(field_name_str) = field_name.as_str() {
+                    if let Some(val) = row_array.get(field_idx) {
+                        fields_map.insert(field_name_str.to_string(), val.clone());
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(fields_map_to_task(record_id, fields_map))
+}
+
+fn fetch_record(config: &Config, id: &str) -> Result<Task, String> {
+    let args = vec![
+        "--format".to_string(),
+        "json".to_string(),
+        "base".to_string(),
+        "+record-get".to_string(),
+        "--base-token".to_string(),
+        config.base_token.clone(),
+        "--table-id".to_string(),
+        config.table_id.clone(),
+        "--record-id".to_string(),
+        id.to_string(),
+    ];
+
+    let output = run_lark_cli(&config.profile, &args)?;
+    parse_single_record_response(id, &output)
+}
+
 #[derive(Serialize, Debug)]
 struct ApiResponse<T> {
     code: i32,
@@ -734,6 +828,12 @@ fn update_task(
     };
     let config = &state.config;
 
+    log(&format!(
+        "update_task 开始: record_id={}, payload={}",
+        id,
+        serde_json::to_string(&payload).unwrap_or_default()
+    ));
+
     let (json_file, path_str) = tmp_json_path("upsert");
 
     if let Err(e) = std::fs::write(
@@ -762,6 +862,11 @@ fn update_task(
         Err(e) => return ApiResponse::err(e),
     };
 
+    log(&format!(
+        "update_task upsert 响应: record_id={}, output={}",
+        id, output
+    ));
+
     let resp: LarkResponse<serde_json::Value> = match serde_json::from_str(&output) {
         Ok(r) => r,
         Err(e) => return ApiResponse::err(format!("解析响应失败: {}\n{}", e, output)),
@@ -775,9 +880,27 @@ fn update_task(
         );
     }
 
-    // lark-cli +record-upsert returns updated fields under record.update without record_id.
-    // The frontend keeps the optimistic update, so we just confirm success.
-    ApiResponse::ok(serde_json::json!({ "updated": true }))
+    // 立即拉取最新记录，确保前端状态与 Base 一致
+    match fetch_record(config, &id) {
+        Ok(task) => {
+            log(&format!(
+                "update_task 拉取成功: record_id={}, note={:?}, link={:?}",
+                id, task.note, task.link
+            ));
+            match serde_json::to_value(task) {
+                Ok(v) => ApiResponse::ok(v),
+                Err(e) => ApiResponse::err(format!("序列化任务失败: {}", e)),
+            }
+        }
+        Err(e) => {
+            log(&format!(
+                "update_task 拉取记录失败: record_id={}, err={}",
+                id, e
+            ));
+            // 拉取失败不影响更新本身，仍返回成功
+            ApiResponse::ok(serde_json::json!({ "updated": true }))
+        }
+    }
 }
 
 #[tauri::command]

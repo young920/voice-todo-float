@@ -990,7 +990,7 @@ async function addTask(name, priority = '中', deadline = null) {
   showLoading();
   try {
     const data = await invoke('create_task', { name: cleanName, deadline: finalDeadline, priority });
-    if (data.code === 0 && data.data) {
+    if (data.code === 0 && data.data && data.data.id) {
       showToast('已添加');
       // Replace temp task with server-returned real task
       const serverTask = data.data;
@@ -1001,6 +1001,10 @@ async function addTask(name, priority = '中', deadline = null) {
         tasks.unshift(serverTask);
       }
       renderTasks();
+    } else if (data.code === 0) {
+      showToast('已添加');
+      // Keep temp task; try to refresh after a delay to get real record id
+      setTimeout(() => loadTasks({ silent: true }), 3000);
     } else {
       // Remove temp task on failure
       const tempIdx = tasks.findIndex(t => t.id === tempId);
@@ -1043,16 +1047,9 @@ async function updateTask(id, name, priority, deadline, link, note) {
     if (link !== undefined) payload['链接'] = link;
     if (note !== undefined) payload['备注'] = note;
     const data = await invoke('update_task', { payload });
-    if (data.code === 0 && data.data) {
-      // Use server-returned task to ensure local state matches real data
-      const serverTask = data.data;
-      const idx = tasks.findIndex(t => t.id === id);
-      if (idx >= 0) {
-        tasks[idx] = serverTask;
-      }
-      editingTaskId = null;
-      renderTasks();
+    if (data.code === 0) {
       showToast('已更新');
+      // Optimistic update is already applied; keep it and don't loadTasks immediately
     } else {
       // Rollback on failure
       Object.assign(task, oldTask);
@@ -1091,15 +1088,9 @@ async function toggleTaskStatus(id) {
     if (completedAt) payload['完成时间'] = completedAt;
     else payload['完成时间'] = null;
     const data = await invoke('update_task', { payload });
-    if (data.code === 0 && data.data) {
-      // Use server-returned task to ensure local state matches real data
-      const serverTask = data.data;
-      const idx = tasks.findIndex(t => t.id === id);
-      if (idx >= 0) {
-        tasks[idx] = serverTask;
-      }
-      renderTasks();
+    if (data.code === 0) {
       showToast(newStatus === '已完成' ? '已批' : '已恢复');
+      // Optimistic update is already applied; keep it and don't loadTasks immediately
     } else {
       // Rollback
       task.status = oldStatus;

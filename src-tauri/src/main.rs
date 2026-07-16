@@ -237,22 +237,6 @@ struct RecordListData {
     record_id_list: Vec<String>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-struct RecordData {
-    #[serde(rename = "record_id")]
-    record_id: String,
-    fields: HashMap<String, serde_json::Value>,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-struct UpsertRecordData {
-    record: RecordData,
-    #[serde(default)]
-    created: bool,
-    #[serde(default)]
-    updated: bool,
-}
-
 #[derive(Serialize, Debug)]
 struct ApiResponse<T> {
     code: i32,
@@ -653,7 +637,7 @@ fn create_task(
     name: String,
     deadline: Option<String>,
     priority: String,
-) -> ApiResponse<Task> {
+) -> ApiResponse<serde_json::Value> {
     if name.trim().is_empty() {
         return ApiResponse::err("任务名称不能为空");
     }
@@ -708,10 +692,14 @@ fn create_task(
 
     let raw = match resp.data {
         Some(d) => d,
-        None => return ApiResponse::err("创建响应缺少记录数据"),
+        None => return ApiResponse::ok(serde_json::json!({ "created": true })),
     };
 
     let record_id = raw.record_id_list.get(0).cloned().unwrap_or_default();
+    if record_id.is_empty() {
+        return ApiResponse::ok(serde_json::json!({ "created": true }));
+    }
+
     let mut fields_map: HashMap<String, serde_json::Value> = HashMap::new();
     if let Some(first_row) = raw.data.get(0) {
         for (field_idx, field_name) in raw.fields.iter().enumerate() {
@@ -721,14 +709,17 @@ fn create_task(
         }
     }
     let task = fields_map_to_task(record_id, fields_map);
-    ApiResponse::ok(task)
+    match serde_json::to_value(task) {
+        Ok(v) => ApiResponse::ok(v),
+        Err(_) => ApiResponse::ok(serde_json::json!({ "created": true })),
+    }
 }
 
 #[tauri::command]
 fn update_task(
     state: tauri::State<AppState>,
     mut payload: std::collections::HashMap<String, serde_json::Value>,
-) -> ApiResponse<Task> {
+) -> ApiResponse<serde_json::Value> {
     let id = match payload.remove("id") {
         Some(serde_json::Value::String(s)) => s,
         _ => return ApiResponse::err("缺少记录 ID"),
@@ -763,7 +754,7 @@ fn update_task(
         Err(e) => return ApiResponse::err(e),
     };
 
-    let resp: LarkResponse<UpsertRecordData> = match serde_json::from_str(&output) {
+    let resp: LarkResponse<serde_json::Value> = match serde_json::from_str(&output) {
         Ok(r) => r,
         Err(e) => return ApiResponse::err(format!("解析响应失败: {}\n{}", e, output)),
     };
@@ -776,13 +767,9 @@ fn update_task(
         );
     }
 
-    let upsert_data = match resp.data {
-        Some(d) => d,
-        None => return ApiResponse::err("更新响应缺少记录数据"),
-    };
-
-    let task = fields_map_to_task(upsert_data.record.record_id, upsert_data.record.fields);
-    ApiResponse::ok(task)
+    // lark-cli +record-upsert returns updated fields under record.update without record_id.
+    // The frontend keeps the optimistic update, so we just confirm success.
+    ApiResponse::ok(serde_json::json!({ "updated": true }))
 }
 
 #[tauri::command]

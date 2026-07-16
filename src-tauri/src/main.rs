@@ -297,12 +297,20 @@ fn fields_map_to_task(record_id: String, fields_map: HashMap<String, serde_json:
 
     let deadline = get_opt_str("截止时间");
     let status = get_str("状态");
-    let task_type = if deadline.is_some() { "scheduled" } else { "someday" };
+    let task_type = if deadline.is_some() {
+        "scheduled"
+    } else {
+        "someday"
+    };
 
     Task {
         id: record_id,
         name: get_str("任务名称"),
-        status: if status.is_empty() { "待办".to_string() } else { status },
+        status: if status.is_empty() {
+            "待办".to_string()
+        } else {
+            status
+        },
         deadline,
         priority: get_str("优先级"),
         note: get_str("备注"),
@@ -877,10 +885,39 @@ fn start_dragging(state: tauri::State<AppState>) -> Result<(), String> {
 
 #[tauri::command]
 fn open_external(app: tauri::AppHandle, url: String) -> Result<(), String> {
+    let normalized = normalize_url(url);
     app.opener()
-        .open_url(&url, None::<&str>)
+        .open_url(&normalized, None::<&str>)
         .map_err(|e| e.to_string())?;
     Ok(())
+}
+
+fn normalize_url(url: String) -> String {
+    let url = url.trim();
+    if url.is_empty() {
+        return url.to_string();
+    }
+
+    // Already has a protocol (file://, http://, https://, etc.)
+    if url.contains("://") {
+        return url.to_string();
+    }
+
+    // Windows absolute path: D:\... or D:/...
+    if let Some(c) = url.chars().next() {
+        if c.is_ascii_alphabetic() && url.len() >= 2 && url.as_bytes()[1] == b':' {
+            let path = url.replace('\\', "/");
+            return format!("file:///{}", path);
+        }
+    }
+
+    // Unix absolute path
+    if url.starts_with('/') {
+        return format!("file://{}", url);
+    }
+
+    // Default: treat as web URL with https
+    format!("https://{}", url)
 }
 
 fn main() {

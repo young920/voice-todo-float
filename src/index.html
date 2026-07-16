@@ -1534,8 +1534,24 @@ function escapeHtml(text) {
 
 function normalizeUrl(url) {
   if (!url) return '';
-  if (!/^https?:\/\//i.test(url)) return 'https://' + url;
-  return url;
+  url = url.trim();
+
+  // Already has a protocol (file://, http://, https://, etc.)
+  if (/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(url)) return url;
+
+  // Windows absolute path: D:\... or D:/...
+  if (/^[a-zA-Z]:[\\\/]/.test(url)) {
+    const normalized = url.replace(/\\/g, '/');
+    return 'file:///' + encodeURI(normalized);
+  }
+
+  // Unix absolute path: /Users/... or /home/...
+  if (/^\//.test(url)) {
+    return 'file://' + encodeURI(url);
+  }
+
+  // Default: treat as web URL with https
+  return 'https://' + url;
 }
 
 let loadingMinTimer = null;

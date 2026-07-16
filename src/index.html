@@ -1542,12 +1542,13 @@ function normalizeUrl(url) {
   // Windows absolute path: D:\... or D:/...
   if (/^[a-zA-Z]:[\\\/]/.test(url)) {
     const normalized = url.replace(/\\/g, '/');
-    return 'file:///' + encodeURI(normalized);
+    // Don't URL-encode: Windows shell can't decode file:// URLs with %20/%XX
+    return 'file:///' + normalized;
   }
 
   // Unix absolute path: /Users/... or /home/...
   if (/^\//.test(url)) {
-    return 'file://' + encodeURI(url);
+    return 'file://' + url;
   }
 
   // Default: treat as web URL with https

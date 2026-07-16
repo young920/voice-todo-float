@@ -907,6 +907,7 @@ fn normalize_url(url: String) -> String {
     if let Some(c) = url.chars().next() {
         if c.is_ascii_alphabetic() && url.len() >= 2 && url.as_bytes()[1] == b':' {
             let path = url.replace('\\', "/");
+            // Don't URL-encode: Windows shell can't decode file:// URLs with %20/%XX
             return format!("file:///{}", path);
         }
     }

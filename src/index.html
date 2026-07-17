@@ -1221,6 +1221,15 @@ function getAllCategories() {
   return categories;
 }
 
+function getValidTagNames() {
+  return tags.map(t => t.name).filter(Boolean);
+}
+
+function filterValidTags(rawTags) {
+  const validNames = new Set(getValidTagNames());
+  return rawTags.filter(t => validNames.has(t));
+}
+
 function getCategoryFilterOptions() {
   return ['全部', ...getAllCategories().filter(c => c !== '全部')];
 }
@@ -1541,6 +1550,7 @@ function renderFavoriteCard(fav) {
 function renderFavoriteEditForm(fav) {
   const tags = (fav.tags || []).join(', ');
   const categoryOptions = getAllCategories().map(c => `<option value="${escapeHtml(c)}">`).join('');
+  const tagOptions = getValidTagNames().map(t => `<option value="${escapeHtml(t)}">`).join('');
 
   return `
     <div class="favorite-item favorite-edit-form" data-fav-id="${escapeHtml(fav.id)}">
@@ -1564,7 +1574,8 @@ function renderFavoriteEditForm(fav) {
         </div>
         <div class="form-field">
           <label class="form-label">标签</label>
-          <input type="text" class="search-input" id="favEditTags-${fav.id}" value="${escapeHtml(tags)}" placeholder="用逗号分隔">
+          <input type="text" class="search-input" id="favEditTags-${fav.id}" list="favEditTagList-${fav.id}" value="${escapeHtml(tags)}" placeholder="用逗号分隔，仅可选已有标签">
+          <datalist id="favEditTagList-${fav.id}">${tagOptions}</datalist>
         </div>
       </div>
       <div class="favorite-edit-actions">
@@ -1577,6 +1588,7 @@ function renderFavoriteEditForm(fav) {
 
 function renderFavoriteAddForm() {
   const categoryOptions = getAllCategories().map(c => `<option value="${escapeHtml(c)}">`).join('');
+  const tagOptions = getValidTagNames().map(t => `<option value="${escapeHtml(t)}">`).join('');
 
   return `
     <div class="favorite-add-inline favorite-edit-form">
@@ -1600,7 +1612,8 @@ function renderFavoriteAddForm() {
         </div>
         <div class="form-field">
           <label class="form-label">标签</label>
-          <input type="text" class="search-input" id="favAddTags" placeholder="用逗号分隔">
+          <input type="text" class="search-input" id="favAddTags" list="favAddTagList" placeholder="用逗号分隔，仅可选已有标签">
+          <datalist id="favAddTagList">${tagOptions}</datalist>
         </div>
       </div>
       <div class="favorite-edit-actions">
@@ -1783,7 +1796,13 @@ function saveAddFavorite() {
   const desc = document.getElementById('favAddDesc')?.value || '';
   const category = document.getElementById('favAddCategory')?.value || '';
   const tagsRaw = document.getElementById('favAddTags')?.value || '';
-  addFavorite(name, link, desc, category, parseTags(tagsRaw));
+  const parsedTags = parseTags(tagsRaw);
+  const validTags = filterValidTags(parsedTags);
+  const invalidTags = parsedTags.filter(t => !validTags.includes(t));
+  if (invalidTags.length > 0) {
+    showToast('已忽略无效标签：' + invalidTags.join('、'));
+  }
+  addFavorite(name, link, desc, category, validTags);
 }
 
 function saveEditFavorite(id) {
@@ -1792,7 +1811,13 @@ function saveEditFavorite(id) {
   const desc = document.getElementById(`favEditDesc-${id}`)?.value || '';
   const category = document.getElementById(`favEditCategory-${id}`)?.value || '';
   const tagsRaw = document.getElementById(`favEditTags-${id}`)?.value || '';
-  updateFavorite(id, name, link, desc, category, parseTags(tagsRaw));
+  const parsedTags = parseTags(tagsRaw);
+  const validTags = filterValidTags(parsedTags);
+  const invalidTags = parsedTags.filter(t => !validTags.includes(t));
+  if (invalidTags.length > 0) {
+    showToast('已忽略无效标签：' + invalidTags.join('、'));
+  }
+  updateFavorite(id, name, link, desc, category, validTags);
 }
 
 function parseTags(raw) {

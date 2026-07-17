@@ -2160,11 +2160,11 @@ function renderAddTask() {
   `;
 }
 
-function renderTask(task) {
+function renderTask(task, tabName) {
   const isDone = task.status === '已完成';
   const tag = getTaskTag(task);
   const dateLabel = task.deadline ? formatDate(task.deadline) : '';
-  if (editingTaskId === task.id) {
+  if (editingTaskId === task.id && tabName === currentTab) {
     return `
       <div class="task-item">
         <div class="checkbox ${isDone ? 'checked' : ''}"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>
@@ -2240,7 +2240,7 @@ function renderTasks() {
         </div>
       `;
     } else {
-      el.innerHTML = addHtml + list.map(renderTask).join('');
+      el.innerHTML = addHtml + list.map(task => renderTask(task, tabName)).join('');
     }
   };
 

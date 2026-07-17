@@ -84,7 +84,8 @@ body::before {
   padding-right: 8px;
 }
 
-.window.collapsed .title-bar .title {
+.window.collapsed .title-bar .title,
+.window.collapsed .title-bar .title-dropdown {
   display: none;
 }
 
@@ -139,7 +140,8 @@ body::before {
   background: rgba(255,255,255,0.4);
   border-bottom: 1px solid var(--border);
   position: relative;
-  z-index: 2;
+  z-index: 100;
+  transform: translateZ(0);
 }
 
 .window-controls {
@@ -759,6 +761,317 @@ body::before {
 .error-banner.show {
   display: block;
 }
+
+/* Module views */
+.module-view { display: none; height: 100%; flex-direction: column; }
+.module-view.active { display: flex; }
+.module-view .tab-panel { display: none; width: 100%; }
+.module-view .tab-panel.active { display: block; }
+body.favorites-mode .tab-bar { display: none; }
+body.favorites-mode .search-panel.show { display: none; }
+body.favorites-mode .btn-add { display: none; }
+body.favorites-mode .btn-search { display: none; }
+
+/* Title dropdown */
+.title-dropdown {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  padding: 4px 6px 4px 2px;
+  border-radius: var(--radius);
+  transition: background 0.2s;
+  z-index: 1000;
+  transform: translateZ(0);
+}
+.title-dropdown:hover { background: rgba(184, 61, 47, 0.06); }
+.title-chevron {
+  font-size: 10px;
+  color: var(--cinnabar);
+  opacity: 0.7;
+  transition: transform 0.2s;
+}
+.title-dropdown.open .title-chevron { transform: rotate(180deg); }
+.title-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 140px;
+  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+  display: none;
+  z-index: 10000;
+  padding: 4px;
+  backdrop-filter: blur(8px);
+}
+.title-dropdown.open .title-menu { display: block; }
+.title-menu-item {
+  padding: 8px 12px;
+  font-size: 14px;
+  color: var(--ink-light);
+  cursor: pointer;
+  border-radius: 2px;
+  transition: all 0.2s;
+  letter-spacing: 0.04em;
+}
+.title-menu-item:hover {
+  background: var(--cinnabar-light);
+  color: var(--cinnabar);
+}
+.title-menu-item.active {
+  color: var(--cinnabar);
+  font-weight: 600;
+  background: rgba(184, 61, 47, 0.06);
+}
+
+/* Favorites */
+.favorites-search-panel {
+  display: none;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-light);
+  background: transparent;
+}
+.favorites-search-panel.show { display: block; }
+.favorites-search-panel .search-row {
+  margin-bottom: 8px;
+}
+.favorites-search-panel .search-row:last-child { margin-bottom: 0; }
+body.favorites-mode .btn-search { display: flex; }
+body.favorites-mode .btn-add { display: flex; }
+.category-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 4px 0 12px;
+}
+.category-pill {
+  padding: 5px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.7);
+  color: var(--ink-light);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.category-pill:hover {
+  border-color: var(--cinnabar);
+  color: var(--cinnabar);
+}
+.category-pill.active {
+  border-color: var(--cinnabar);
+  background: var(--cinnabar);
+  color: #fff;
+}
+.favorites-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-right: 4px;
+}
+.favorite-item {
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  transition: all 0.2s ease;
+  position: relative;
+}
+.favorite-item:hover {
+  border-color: var(--border);
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: var(--shadow);
+  transform: translateY(-1px);
+}
+.favorite-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.favorite-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  line-height: 1.4;
+  flex: 1;
+  word-break: break-word;
+}
+.favorite-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+  opacity: 1;
+  transition: opacity 0.2s;
+}
+.favorite-action-btn {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--ink-light);
+  font-size: 11px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+.favorite-action-btn:hover {
+  border-color: var(--cinnabar);
+  color: var(--cinnabar);
+  background: var(--cinnabar-light);
+}
+.favorite-link-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--cinnabar);
+  text-decoration: none;
+  margin-bottom: 8px;
+  opacity: 0.85;
+  cursor: pointer;
+}
+.favorite-link-btn:hover { opacity: 1; text-decoration: underline; }
+.favorite-link-btn::before {
+  content: '↗';
+  font-size: 10px;
+}
+.favorite-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.form-label {
+  font-size: 11px;
+  color: var(--ink-muted);
+  letter-spacing: 0.04em;
+}
+.form-row {
+  display: flex;
+  gap: 8px;
+}
+.form-row .form-field {
+  flex: 1;
+}
+.favorite-edit-form input,
+.favorite-edit-form textarea {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.85);
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 13px;
+  outline: none;
+  resize: none;
+}
+.favorite-edit-form input:focus,
+.favorite-edit-form textarea:focus { border-color: var(--cinnabar); }
+.favorite-edit-form textarea { min-height: 60px; }
+.favorite-edit-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+.favorite-edit-actions button {
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.8);
+  color: var(--ink-light);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.favorite-edit-actions button:hover {
+  border-color: var(--cinnabar);
+  color: var(--cinnabar);
+}
+.favorite-edit-actions .btn-save {
+  background: var(--cinnabar);
+  border-color: var(--cinnabar);
+  color: #fff;
+}
+.favorite-edit-actions .btn-save:hover {
+  background: #a03528;
+  border-color: #a03528;
+}
+.favorite-add-inline {
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(184, 61, 47, 0.25);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  margin-bottom: 10px;
+}
+.favorite-desc {
+  font-size: 12px;
+  color: var(--ink-light);
+  line-height: 1.5;
+  margin-bottom: 8px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.favorite-link {
+  font-size: 11px;
+  color: var(--cinnabar);
+  text-decoration: none;
+  display: block;
+  margin-bottom: 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0.85;
+}
+.favorite-link:hover { opacity: 1; text-decoration: underline; }
+.favorite-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.favorite-tag {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--cinnabar-light);
+  color: var(--cinnabar);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+.favorite-category {
+  margin-top: 8px;
+  font-size: 10px;
+  color: var(--ink-muted);
+  letter-spacing: 0.04em;
+  text-align: right;
+}
+.favorite-item { position: relative; }
+.favorites-empty {
+  padding: 40px 0;
+  text-align: center;
+  color: var(--ink-muted);
+  font-size: 13px;
+  letter-spacing: 0.04em;
+}
+
 </style>
 </head>
 <body>
@@ -766,7 +1079,14 @@ body::before {
 <div class="window" id="window">
 <div class="title-bar" id="titleBar">
   <div class="drag-region" id="dragRegion" data-tauri-drag-region>
-    <span class="title">一纸待办</span>
+    <div class="title-dropdown" id="titleDropdown">
+      <span class="title" id="titleText">一纸待办</span>
+      <span class="title-chevron">▾</span>
+      <div class="title-menu" id="titleMenu">
+        <div class="title-menu-item active" data-module="tasks">一纸待办</div>
+        <div class="title-menu-item" data-module="favorites">一纸锦囊</div>
+      </div>
+    </div>
     <span class="collapsed-icon">纸</span>
   </div>
   <div class="window-controls" id="windowControls">
@@ -826,11 +1146,33 @@ body::before {
   </div>
 
   <div class="content">
-    <div class="tab-panel active" id="panel-all"><div class="task-list" id="allList"></div></div>
-    <div class="tab-panel" id="panel-today"><div class="task-list" id="todayList"></div></div>
-    <div class="tab-panel" id="panel-scheduled"><div class="task-list" id="scheduledList"></div></div>
-    <div class="tab-panel" id="panel-anytime"><div class="task-list" id="anytimeList"></div></div>
-    <div class="tab-panel" id="panel-completed"><div class="task-list" id="completedList"></div></div>
+    <div class="module-view active" id="module-tasks">
+      <div class="tab-panel active" id="panel-all"><div class="task-list" id="allList"></div></div>
+      <div class="tab-panel" id="panel-today"><div class="task-list" id="todayList"></div></div>
+      <div class="tab-panel" id="panel-scheduled"><div class="task-list" id="scheduledList"></div></div>
+      <div class="tab-panel" id="panel-anytime"><div class="task-list" id="anytimeList"></div></div>
+      <div class="tab-panel" id="panel-completed"><div class="task-list" id="completedList"></div></div>
+    </div>
+    <div class="module-view" id="module-favorites">
+      <div class="favorites-search-panel" id="favSearchPanel">
+        <div class="search-row">
+          <input type="text" class="search-input" id="favSearchName" placeholder="名称关键词...">
+          <select class="search-select" id="favSearchCategory">
+            <option value="">分类</option>
+          </select>
+        </div>
+        <div class="search-row">
+          <input type="text" class="search-input" id="favSearchTag" placeholder="标签...">
+          <input type="text" class="search-input" id="favSearchDesc" placeholder="描述关键词...">
+        </div>
+        <div class="search-row">
+          <input type="text" class="search-input" id="favSearchLink" placeholder="链接关键词...">
+          <button class="search-clear" id="favSearchClear">清除</button>
+        </div>
+      </div>
+      <div class="category-bar" id="categoryBar"></div>
+      <div class="favorites-list" id="favoritesList"></div>
+    </div>
   </div>
 </div>
 
@@ -852,6 +1194,36 @@ let isAdding = false;
 let isAlwaysOnTop = false;
 let searchVisible = false;
 let isCollapsed = false;
+let currentModule = 'tasks';
+let favorites = [];
+let tags = [];
+let currentCategory = '全部';
+let favSearch = {
+  name: '',
+  category: '',
+  tag: '',
+  desc: '',
+  link: ''
+};
+let favSearchVisible = false;
+let isAddingFavorite = false;
+let editingFavoriteId = null;
+
+const CATEGORY_ORDER = ['工具', '产品', 'AI', '阅读', '设计', '素材', '灵感', '未分类'];
+let categories = [...CATEGORY_ORDER];
+
+function updateCategories() {
+  const existing = new Set(favorites.map(f => f.category || '未分类'));
+  categories = [...new Set([...CATEGORY_ORDER, ...existing])];
+}
+
+function getAllCategories() {
+  return categories;
+}
+
+function getCategoryFilterOptions() {
+  return ['全部', ...getAllCategories().filter(c => c !== '全部')];
+}
 
 const STATUS_MAP = {
   '待办': { label: '待办', class: 'tag-pending', code: 'pending' },
@@ -961,6 +1333,470 @@ async function loadTasks(opts = {}) {
   } finally {
     if (!opts.silent) hideLoading();
   }
+}
+
+
+async function refreshAll() {
+  showLoading();
+  try {
+    await Promise.all([loadTasks({ silent: true }), loadFavorites({ silent: true }), loadTags()]);
+  } finally {
+    hideLoading();
+  }
+}
+
+async function loadFavorites(opts = {}) {
+  if (!opts.silent) showLoading();
+  hideError();
+  try {
+    const data = await invoke('get_favorites');
+    if (data.code === 0 && data.data) {
+      favorites = data.data;
+      updateCategories();
+      console.log('loaded ' + favorites.length + ' favorites');
+    } else {
+      favorites = [];
+      const msg = data.msg || 'unknown';
+      console.log('load favorites failed: ' + msg);
+      showError('同步锦囊失败：' + msg);
+    }
+  } catch (error) {
+    console.error('Load favorites error:', error);
+    showError('无法连接到后端：' + (error.message || error));
+  } finally {
+    if (!opts.silent) hideLoading();
+  }
+  renderFavorites();
+}
+
+async function loadTags() {
+  try {
+    const data = await invoke('get_tags');
+    if (data.code === 0 && data.data) {
+      tags = data.data;
+      console.log('loaded ' + tags.length + ' tags');
+    } else {
+      tags = [];
+    }
+  } catch (error) {
+    console.error('Load tags error:', error);
+    tags = [];
+  }
+  renderFavorites();
+}
+
+function switchModule(module) {
+  currentModule = module;
+  document.body.classList.toggle('favorites-mode', module === 'favorites');
+  document.querySelectorAll('.module-view').forEach(el => el.classList.remove('active'));
+  const activeModule = document.getElementById('module-' + module);
+  if (activeModule) activeModule.classList.add('active');
+  document.querySelectorAll('.title-menu-item').forEach(el => el.classList.toggle('active', el.getAttribute('data-module') === module));
+  document.getElementById('titleText').textContent = module === 'favorites' ? '一纸锦囊' : '一纸待办';
+  document.getElementById('titleDropdown').classList.remove('open');
+  
+  // Sync search/add state visibility per module
+  const taskSearchPanel = document.getElementById('searchPanel');
+  const favSearchPanel = document.getElementById('favSearchPanel');
+  if (taskSearchPanel) taskSearchPanel.classList.toggle('show', module !== 'favorites' && searchVisible);
+  if (favSearchPanel) favSearchPanel.classList.toggle('show', module === 'favorites' && favSearchVisible);
+  
+  if (module === 'favorites') {
+    renderFavorites();
+  } else {
+    renderTasks();
+  }
+}
+
+function getCategoryCounts() {
+  const counts = { '全部': favorites.length };
+  favorites.forEach(fav => {
+    const cat = fav.category || '未分类';
+    counts[cat] = (counts[cat] || 0) + 1;
+  });
+  return counts;
+}
+
+function renderCategoryBar() {
+  const counts = getCategoryCounts();
+  const categories = getCategoryFilterOptions().filter(c => c === '全部' || counts[c] > 0);
+  const bar = document.getElementById('categoryBar');
+  if (!bar) return;
+  bar.innerHTML = categories.map(cat => {
+    const count = counts[cat] || 0;
+    const active = currentCategory === cat ? 'active' : '';
+    return `<button class="category-pill ${active}" data-category="${escapeHtml(cat)}">${escapeHtml(cat)} <span class="badge">${count}</span></button>`;
+  }).join('');
+  
+  // Populate category filter dropdown for search
+  const catSelect = document.getElementById('favSearchCategory');
+  if (catSelect) {
+    const currentVal = catSelect.value;
+    catSelect.innerHTML = '<option value="">分类</option>' + 
+      categories.filter(c => c !== '全部').map(cat => 
+        `<option value="${escapeHtml(cat)}"${currentVal === cat ? ' selected' : ''}>${escapeHtml(cat)}</option>`
+      ).join('');
+  }
+}
+
+function filterFavorites() {
+  const nameKw = favSearch.name.toLowerCase().trim();
+  const catKw = favSearch.category;
+  const tagKw = favSearch.tag.toLowerCase().trim();
+  const descKw = favSearch.desc.toLowerCase().trim();
+  const linkKw = favSearch.link.toLowerCase().trim();
+  
+  return favorites.filter(fav => {
+    if (currentCategory !== '全部' && (fav.category || '未分类') !== currentCategory) return false;
+    if (catKw && (fav.category || '未分类') !== catKw) return false;
+    if (nameKw && !(fav.name || '').toLowerCase().includes(nameKw)) return false;
+    if (tagKw) {
+      const tagStr = (fav.tags || []).join(' ').toLowerCase();
+      if (!tagStr.includes(tagKw)) return false;
+    }
+    if (descKw) {
+      const desc = (fav.description || '').toLowerCase();
+      const link = (fav.link || '').toLowerCase();
+      if (!desc.includes(descKw) && !link.includes(descKw)) return false;
+    }
+    if (linkKw && !(fav.link || '').toLowerCase().includes(linkKw)) return false;
+    return true;
+  });
+}
+
+function applyFavFilters() {
+  favSearch.name = document.getElementById('favSearchName')?.value || '';
+  favSearch.category = document.getElementById('favSearchCategory')?.value || '';
+  favSearch.tag = document.getElementById('favSearchTag')?.value || '';
+  favSearch.desc = document.getElementById('favSearchDesc')?.value || '';
+  favSearch.link = document.getElementById('favSearchLink')?.value || '';
+  renderFavorites();
+}
+
+function clearFavFilters() {
+  favSearch = { name: '', category: '', tag: '', desc: '', link: '' };
+  const ids = ['favSearchName', 'favSearchCategory', 'favSearchTag', 'favSearchDesc', 'favSearchLink'];
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  renderFavorites();
+}
+
+function toggleFavSearch() {
+  favSearchVisible = !favSearchVisible;
+  const panel = document.getElementById('favSearchPanel');
+  if (panel) panel.classList.toggle('show', favSearchVisible);
+  const btn = document.getElementById('searchBtn');
+  if (btn) btn.classList.toggle('active', favSearchVisible && currentModule === 'favorites');
+}
+
+function renderFavorites() {
+  renderCategoryBar();
+  const list = filterFavorites();
+  const container = document.getElementById('favoritesList');
+  if (!container) return;
+
+  let html = '';
+  if (isAddingFavorite) {
+    html += renderFavoriteAddForm();
+  }
+
+  if (list.length === 0 && !isAddingFavorite) {
+    html += `<div class="favorites-empty">暂无锦囊</div>`;
+  } else {
+    html += list.map(fav => {
+      if (editingFavoriteId === fav.id) {
+        return renderFavoriteEditForm(fav);
+      }
+      return renderFavoriteCard(fav);
+    }).join('');
+  }
+
+  container.innerHTML = html;
+}
+
+function renderFavoriteCard(fav) {
+  const tagsHtml = (fav.tags || []).map(tag => `<span class="favorite-tag">${escapeHtml(tag)}</span>`).join('');
+  const linkUrl = fav.link ? escapeHtml(normalizeUrl(fav.link)) : '';
+  const linkHtml = fav.link ? `<span class="favorite-link-btn" data-action="open-link" data-url="${linkUrl}">打开链接</span>` : '';
+
+  return `
+    <div class="favorite-item" data-fav-id="${escapeHtml(fav.id)}">
+      <div class="favorite-item-header">
+        <div class="favorite-title">${escapeHtml(fav.name)}</div>
+        <div class="favorite-actions">
+          <button class="favorite-action-btn" data-action="edit-fav" data-fav-id="${escapeHtml(fav.id)}" title="编辑">改</button>
+          <button class="favorite-action-btn" data-action="delete-fav" data-fav-id="${escapeHtml(fav.id)}" title="删除">删</button>
+        </div>
+      </div>
+      ${fav.description ? `<div class="favorite-desc">${escapeHtml(fav.description)}</div>` : ''}
+      ${linkHtml}
+      ${tagsHtml ? `<div class="favorite-tags">${tagsHtml}</div>` : ''}
+      <div class="favorite-category">${escapeHtml(fav.category || '未分类')}</div>
+    </div>
+  `;
+}
+
+function renderFavoriteEditForm(fav) {
+  const tags = (fav.tags || []).join(', ');
+  const categoryOptions = getAllCategories().map(c => `<option value="${escapeHtml(c)}">`).join('');
+
+  return `
+    <div class="favorite-item favorite-edit-form" data-fav-id="${escapeHtml(fav.id)}">
+      <div class="form-field">
+        <label class="form-label">名称</label>
+        <input type="text" id="favEditName-${fav.id}" value="${escapeHtml(fav.name)}" placeholder="例如：Claude Code 文档">
+      </div>
+      <div class="form-field">
+        <label class="form-label">链接</label>
+        <input type="text" id="favEditLink-${fav.id}" value="${escapeHtml(fav.link)}" placeholder="https://...">
+      </div>
+      <div class="form-field">
+        <label class="form-label">描述</label>
+        <textarea id="favEditDesc-${fav.id}" placeholder="简短描述...">${escapeHtml(fav.description)}</textarea>
+      </div>
+      <div class="form-row">
+        <div class="form-field">
+          <label class="form-label">分类</label>
+          <input type="text" class="search-input" id="favEditCategory-${fav.id}" list="favEditCategoryList" value="${escapeHtml(fav.category || '')}" placeholder="例如：AI">
+          <datalist id="favEditCategoryList">${categoryOptions}</datalist>
+        </div>
+        <div class="form-field">
+          <label class="form-label">标签</label>
+          <input type="text" class="search-input" id="favEditTags-${fav.id}" value="${escapeHtml(tags)}" placeholder="用逗号分隔">
+        </div>
+      </div>
+      <div class="favorite-edit-actions">
+        <button data-action="cancel-edit-fav">取消</button>
+        <button class="btn-save" data-action="save-edit-fav" data-fav-id="${escapeHtml(fav.id)}">保存</button>
+      </div>
+    </div>
+  `;
+}
+
+function renderFavoriteAddForm() {
+  const categoryOptions = getAllCategories().map(c => `<option value="${escapeHtml(c)}">`).join('');
+
+  return `
+    <div class="favorite-add-inline favorite-edit-form">
+      <div class="form-field">
+        <label class="form-label">名称</label>
+        <input type="text" id="favAddName" placeholder="例如：Claude Code 文档">
+      </div>
+      <div class="form-field">
+        <label class="form-label">链接</label>
+        <input type="text" id="favAddLink" placeholder="https://...">
+      </div>
+      <div class="form-field">
+        <label class="form-label">描述</label>
+        <textarea id="favAddDesc" placeholder="简短描述..."></textarea>
+      </div>
+      <div class="form-row">
+        <div class="form-field">
+          <label class="form-label">分类</label>
+          <input type="text" class="search-input" id="favAddCategory" list="favAddCategoryList" placeholder="例如：AI">
+          <datalist id="favAddCategoryList">${categoryOptions}</datalist>
+        </div>
+        <div class="form-field">
+          <label class="form-label">标签</label>
+          <input type="text" class="search-input" id="favAddTags" placeholder="用逗号分隔">
+        </div>
+      </div>
+      <div class="favorite-edit-actions">
+        <button data-action="cancel-add-fav">取消</button>
+        <button class="btn-save" data-action="save-add-fav">保存</button>
+      </div>
+    </div>
+  `;
+}
+
+async function addFavorite(name, link, description, category, tags) {
+  if (!name.trim()) {
+    showToast('名称不能为空');
+    return;
+  }
+  const tempId = 'temp-' + Date.now();
+  const tempFav = {
+    id: tempId,
+    name: name.trim(),
+    link: link.trim(),
+    description: description.trim(),
+    category: category.trim() || '未分类',
+    tags: tags,
+    created_at: new Date().toISOString()
+  };
+  favorites.unshift(tempFav);
+  updateCategories();
+  isAddingFavorite = false;
+  renderFavorites();
+
+  showLoading();
+  try {
+    const data = await invoke('create_favorite', {
+      name: name.trim(),
+      link: link.trim(),
+      description: description.trim(),
+      category: category.trim() || '未分类',
+      tags: tags
+    });
+    if (data.code === 0 && data.data && data.data.id) {
+      showToast('已添加');
+      const idx = favorites.findIndex(f => f.id === tempId);
+      if (idx >= 0) favorites[idx] = data.data;
+      else favorites.unshift(data.data);
+      renderFavorites();
+    } else if (data.code === 0) {
+      showToast('已添加');
+      setTimeout(() => loadFavorites({ silent: true }), 3000);
+    } else {
+      const idx = favorites.findIndex(f => f.id === tempId);
+      if (idx >= 0) favorites.splice(idx, 1);
+      renderFavorites();
+      showToast(data.msg || '添加失败');
+      showError('添加失败：' + (data.msg || '未知错误'));
+    }
+  } catch (error) {
+    const idx = favorites.findIndex(f => f.id === tempId);
+    if (idx >= 0) favorites.splice(idx, 1);
+    renderFavorites();
+    showToast('添加失败');
+    showError('添加失败：' + (error.message || error));
+  } finally {
+    hideLoading();
+  }
+}
+
+async function updateFavorite(id, name, link, description, category, tags) {
+  const fav = favorites.find(f => f.id === id);
+  if (!fav) return;
+  if (!name.trim()) {
+    showToast('名称不能为空');
+    return;
+  }
+
+  const old = { ...fav };
+  fav.name = name.trim();
+  fav.link = link.trim();
+  fav.description = description.trim();
+  fav.category = category.trim() || '未分类';
+  fav.tags = tags;
+  updateCategories();
+  editingFavoriteId = null;
+  renderFavorites();
+
+  showLoading();
+  try {
+    const payload = {
+      id: id,
+      "名称": name.trim(),
+      "链接": link.trim(),
+      "描述": description.trim(),
+      "分类": category.trim() || '未分类',
+    };
+    if (tags.length > 0) {
+      payload["标签"] = tags;
+    }
+    const data = await invoke('update_favorite', payload);
+    if (data.code === 0) {
+      showToast('已保存');
+    } else {
+      Object.assign(fav, old);
+      updateCategories();
+      renderFavorites();
+      showToast(data.msg || '保存失败');
+      showError('保存失败：' + (data.msg || '未知错误'));
+    }
+  } catch (error) {
+    Object.assign(fav, old);
+    updateCategories();
+    renderFavorites();
+    showToast('保存失败');
+    showError('保存失败：' + (error.message || error));
+  } finally {
+    hideLoading();
+  }
+}
+
+async function deleteFavorite(id) {
+  const idx = favorites.findIndex(f => f.id === id);
+  if (idx < 0) return;
+  const old = favorites.splice(idx, 1)[0];
+  if (editingFavoriteId === id) editingFavoriteId = null;
+  renderFavorites();
+
+  showLoading();
+  try {
+    const data = await invoke('delete_favorite', { id });
+    if (data.code === 0) {
+      showToast('已删除');
+    } else {
+      favorites.splice(idx, 0, old);
+      renderFavorites();
+      showToast(data.msg || '删除失败');
+      showError('删除失败：' + (data.msg || '未知错误'));
+    }
+  } catch (error) {
+    favorites.splice(idx, 0, old);
+    renderFavorites();
+    showToast('删除失败');
+    showError('删除失败：' + (error.message || error));
+  } finally {
+    hideLoading();
+  }
+}
+
+function startAddFavorite() {
+  if (currentModule !== 'favorites') return;
+  isAddingFavorite = true;
+  renderFavorites();
+  setTimeout(() => {
+    const el = document.getElementById('favAddName');
+    if (el) el.focus();
+  }, 0);
+}
+
+function cancelAddFavorite() {
+  isAddingFavorite = false;
+  renderFavorites();
+}
+
+function startEditFavorite(id) {
+  if (currentModule !== 'favorites') return;
+  editingFavoriteId = id;
+  isAddingFavorite = false;
+  renderFavorites();
+  setTimeout(() => {
+    const el = document.getElementById(`favEditName-${id}`);
+    if (el) { el.focus(); el.select(); }
+  }, 0);
+}
+
+function cancelEditFavorite() {
+  editingFavoriteId = null;
+  renderFavorites();
+}
+
+function saveAddFavorite() {
+  const name = document.getElementById('favAddName')?.value || '';
+  const link = document.getElementById('favAddLink')?.value || '';
+  const desc = document.getElementById('favAddDesc')?.value || '';
+  const category = document.getElementById('favAddCategory')?.value || '';
+  const tagsRaw = document.getElementById('favAddTags')?.value || '';
+  addFavorite(name, link, desc, category, parseTags(tagsRaw));
+}
+
+function saveEditFavorite(id) {
+  const name = document.getElementById(`favEditName-${id}`)?.value || '';
+  const link = document.getElementById(`favEditLink-${id}`)?.value || '';
+  const desc = document.getElementById(`favEditDesc-${id}`)?.value || '';
+  const category = document.getElementById(`favEditCategory-${id}`)?.value || '';
+  const tagsRaw = document.getElementById(`favEditTags-${id}`)?.value || '';
+  updateFavorite(id, name, link, desc, category, parseTags(tagsRaw));
+}
+
+function parseTags(raw) {
+  return raw.split(/[,，]/).map(t => t.trim()).filter(t => t);
 }
 
 async function addTask(name, priority = '中', deadline = null) {
@@ -1429,6 +2265,23 @@ function bindDynamicEvents() {
     addInput.addEventListener('keydown', handleAddKey);
   }
 
+  const favAddName = document.getElementById('favAddName');
+  if (favAddName) {
+    favAddName.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); saveAddFavorite(); }
+      else if (e.key === 'Escape') cancelAddFavorite();
+    });
+  }
+
+  const favEditName = document.querySelector('[id^="favEditName-"]');
+  if (favEditName) {
+    const id = favEditName.id.replace('favEditName-', '');
+    favEditName.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); saveEditFavorite(id); }
+      else if (e.key === 'Escape') cancelEditFavorite();
+    });
+  }
+
   const saveAddBtn = document.querySelector('[data-action="saveAdd"]');
   if (saveAddBtn) {
     saveAddBtn.addEventListener('click', (e) => {
@@ -1561,6 +2414,11 @@ function normalizeUrl(url) {
   if (!url) return '';
   url = url.trim();
 
+  // Feishu URL field returns markdown like [text](url); extract the URL
+  const mdMatch = url.match(/\[([^\]]+)\]\(([^)]+)\)/);
+  if (mdMatch) url = mdMatch[2] || mdMatch[1];
+  url = url.trim();
+
   // Already has a protocol (file://, http://, https://, etc.)
   if (/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(url)) return url;
 
@@ -1669,21 +2527,61 @@ async function closeWindow() {
 }
 
 document.addEventListener('click', (e) => {
-  const link = e.target.closest('.task-link');
-  if (link) {
-    e.preventDefault();
-    const url = link.getAttribute('data-url');
-    if (url) invoke('open_external', { url }).catch(() => {});
+  if (!e.target.closest('#titleDropdown')) {
+    const titleDropdown = document.getElementById('titleDropdown');
+    if (titleDropdown) titleDropdown.classList.remove('open');
+  }
+
+  const categoryPill = e.target.closest('.category-pill');
+  if (categoryPill) {
+    e.stopPropagation();
+    currentCategory = categoryPill.getAttribute('data-category') || '全部';
+    renderFavorites();
     return;
   }
 
-  const taskItem = e.target.closest('.task-item');
-  if (taskItem) {
-    const taskId = taskItem.getAttribute('data-task-id');
-    const actionEl = e.target.closest('[data-action]');
-    if (actionEl) {
-      const action = actionEl.getAttribute('data-action');
-      e.stopPropagation();
+  const actionEl = e.target.closest('[data-action]');
+  if (actionEl) {
+    const action = actionEl.getAttribute('data-action');
+    e.stopPropagation();
+
+    if (action === 'open-link') {
+      const url = actionEl.getAttribute('data-url');
+      if (url) invoke('open_external', { url }).catch(() => {});
+      return;
+    }
+
+    if (action === 'edit-fav') {
+      const id = actionEl.getAttribute('data-fav-id');
+      if (id) startEditFavorite(id);
+      return;
+    }
+    if (action === 'delete-fav') {
+      const id = actionEl.getAttribute('data-fav-id');
+      if (id) deleteFavorite(id);
+      return;
+    }
+    if (action === 'save-add-fav') {
+      saveAddFavorite();
+      return;
+    }
+    if (action === 'cancel-add-fav') {
+      cancelAddFavorite();
+      return;
+    }
+    if (action === 'save-edit-fav') {
+      const id = actionEl.getAttribute('data-fav-id');
+      if (id) saveEditFavorite(id);
+      return;
+    }
+    if (action === 'cancel-edit-fav') {
+      cancelEditFavorite();
+      return;
+    }
+
+    const taskItem = e.target.closest('.task-item');
+    if (taskItem) {
+      const taskId = taskItem.getAttribute('data-task-id');
       if (action === 'toggle' && taskId) {
         toggleTaskStatus(taskId);
       } else if (action === 'edit' && taskId) {
@@ -1703,18 +2601,29 @@ document.addEventListener('click', (e) => {
       return;
     }
   }
+
+  const link = e.target.closest('.task-link');
+  if (link) {
+    e.preventDefault();
+    const url = link.getAttribute('data-url');
+    if (url) invoke('open_external', { url }).catch(() => {});
+    return;
+  }
 });
 
 window.addEventListener('DOMContentLoaded', () => {
   console.log('DOMContentLoaded');
   initVoice();
   renderTasks();
+  renderFavorites();
   loadTasks();
+  loadFavorites();
+  loadTags();
 
   const dragRegion = document.getElementById('dragRegion');
   if (dragRegion) {
     dragRegion.addEventListener('mousedown', (e) => {
-      if (e.button === 0) {
+      if (e.button === 0 && !e.target.closest('#titleDropdown')) {
         e.preventDefault();
         invoke('start_dragging').catch(() => {});
       }
@@ -1731,9 +2640,21 @@ window.addEventListener('DOMContentLoaded', () => {
     if (el) el.addEventListener(event, handler);
   };
 
-  addListener('btnAdd', startAdd);
-  addListener('btnRefresh', loadTasks);
-  addListener('searchBtn', toggleSearch);
+  addListener('btnAdd', () => {
+    if (currentModule === 'favorites') {
+      startAddFavorite();
+    } else {
+      startAdd();
+    }
+  });
+  addListener('btnRefresh', refreshAll);
+  addListener('searchBtn', () => {
+    if (currentModule === 'favorites') {
+      toggleFavSearch();
+    } else {
+      toggleSearch();
+    }
+  });
   addListener('pinBtn', toggleAlwaysOnTop);
   addListener('btnCollapse', toggleCollapse);
   addListener('btnMinimize', minimizeWindow);
@@ -1745,6 +2666,29 @@ window.addEventListener('DOMContentLoaded', () => {
       if (tabName) switchTab(tabName);
     });
   });
+
+  const titleDropdown = document.getElementById('titleDropdown');
+  if (titleDropdown) {
+    titleDropdown.addEventListener('click', (e) => {
+      e.stopPropagation();
+      titleDropdown.classList.toggle('open');
+    });
+  }
+
+  document.querySelectorAll('.title-menu-item').forEach(item => {
+    item.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const module = item.getAttribute('data-module');
+      if (module) switchModule(module);
+    });
+  });
+
+  addInputListener('favSearchName', 'input', applyFavFilters);
+  addInputListener('favSearchCategory', 'change', applyFavFilters);
+  addInputListener('favSearchTag', 'input', applyFavFilters);
+  addInputListener('favSearchDesc', 'input', applyFavFilters);
+  addInputListener('favSearchLink', 'input', applyFavFilters);
+  addListener('favSearchClear', clearFavFilters);
 
   addInputListener('searchKeyword', 'input', applyFilters);
   addInputListener('searchPriority', 'change', applyFilters);

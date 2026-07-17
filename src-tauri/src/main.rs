@@ -27,6 +27,10 @@ struct Config {
     #[serde(rename = "table_id")]
     table_id: String,
     profile: String,
+    #[serde(rename = "favorites_table_id")]
+    favorites_table_id: Option<String>,
+    #[serde(rename = "tags_table_id")]
+    tags_table_id: Option<String>,
 }
 
 impl Config {
@@ -34,7 +38,20 @@ impl Config {
         let path = config_path();
         let content = std::fs::read_to_string(&path)
             .map_err(|e| format!("无法读取配置文件 {}: {}", path.display(), e))?;
-        serde_json::from_str(&content).map_err(|e| format!("解析配置文件失败: {}", e))
+        let config: Config =
+            serde_json::from_str(&content).map_err(|e| format!("解析配置文件失败: {}", e))?;
+        // Migration: if old config lacks favorites/tags table IDs, leave them None
+        Ok(config)
+    }
+
+    fn favorites_table_id(&self) -> Option<&String> {
+        self.favorites_table_id
+            .as_ref()
+            .filter(|s| !s.trim().is_empty())
+    }
+
+    fn tags_table_id(&self) -> Option<&String> {
+        self.tags_table_id.as_ref().filter(|s| !s.trim().is_empty())
     }
 }
 
@@ -215,6 +232,26 @@ struct Task {
     task_type: String,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
+struct Favorite {
+    id: String,
+    name: String,
+    link: String,
+    description: String,
+    tags: Vec<String>,
+    category: String,
+    #[serde(rename = "created_at")]
+    created_at: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+struct Tag {
+    id: String,
+    name: String,
+    category: String,
+    color: String,
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 struct LarkResponse<T> {
     ok: bool,
@@ -389,6 +426,23 @@ fn fields_map_to_task(record_id: String, fields_map: HashMap<String, serde_json:
         })
     };
 
+    let _get_str_array = |key: &str| -> Vec<String> {
+        fields_map
+            .get(key)
+            .map(|v| {
+                if let Some(arr) = v.as_array() {
+                    arr.iter()
+                        .filter_map(|f| f.as_str().map(|s| s.to_string()))
+                        .collect()
+                } else if v.is_string() {
+                    vec![v.as_str().unwrap_or("").to_string()]
+                } else {
+                    vec![]
+                }
+            })
+            .unwrap_or_default()
+    };
+
     let deadline = get_opt_str("截止时间");
     let status = get_str("状态");
     let task_type = if deadline.is_some() {
@@ -412,6 +466,95 @@ fn fields_map_to_task(record_id: String, fields_map: HashMap<String, serde_json:
         created_at: get_opt_str("创建时间"),
         completed_at: get_opt_str("完成时间"),
         task_type: task_type.to_string(),
+    }
+}
+
+fn fields_map_to_favorite(
+    record_id: String,
+    fields_map: HashMap<String, serde_json::Value>,
+) -> Favorite {
+    let get_str = |key: &str| -> String {
+        fields_map
+            .get(key)
+            .and_then(|v| {
+                if v.is_string() {
+                    v.as_str().map(|s| s.to_string())
+                } else if v.is_array() && v.as_array().map(|a| a.len()) == Some(1) {
+                    v.as_array()
+                        .and_then(|a| a.first())
+                        .and_then(|f| f.as_str().map(|s| s.to_string()))
+                } else {
+                    None
+                }
+            })
+            .unwrap_or_default()
+    };
+
+    let get_opt_str = |key: &str| -> Option<String> {
+        fields_map.get(key).and_then(|v| {
+            if v.is_string() && v.as_str().map(|s| !s.is_empty()).unwrap_or(false) {
+                v.as_str().map(|s| s.to_string())
+            } else if v.is_array() && v.as_array().map(|a| a.len()) == Some(1) {
+                v.as_array()
+                    .and_then(|a| a.first())
+                    .and_then(|f| f.as_str().map(|s| s.to_string()))
+            } else {
+                None
+            }
+        })
+    };
+
+    let get_str_array = |key: &str| -> Vec<String> {
+        fields_map
+            .get(key)
+            .map(|v| {
+                if let Some(arr) = v.as_array() {
+                    arr.iter()
+                        .filter_map(|f| f.as_str().map(|s| s.to_string()))
+                        .collect()
+                } else if v.is_string() {
+                    vec![v.as_str().unwrap_or("").to_string()]
+                } else {
+                    vec![]
+                }
+            })
+            .unwrap_or_default()
+    };
+
+    Favorite {
+        id: record_id,
+        name: get_str("名称"),
+        link: get_str("链接"),
+        description: get_str("描述"),
+        tags: get_str_array("标签"),
+        category: get_str("分类"),
+        created_at: get_opt_str("创建时间"),
+    }
+}
+
+fn fields_map_to_tag(record_id: String, fields_map: HashMap<String, serde_json::Value>) -> Tag {
+    let get_str = |key: &str| -> String {
+        fields_map
+            .get(key)
+            .and_then(|v| {
+                if v.is_string() {
+                    v.as_str().map(|s| s.to_string())
+                } else if v.is_array() && v.as_array().map(|a| a.len()) == Some(1) {
+                    v.as_array()
+                        .and_then(|a| a.first())
+                        .and_then(|f| f.as_str().map(|s| s.to_string()))
+                } else {
+                    None
+                }
+            })
+            .unwrap_or_default()
+    };
+
+    Tag {
+        id: record_id,
+        name: get_str("标签名"),
+        category: get_str("分类"),
+        color: get_str("颜色"),
     }
 }
 
@@ -731,6 +874,328 @@ fn get_tasks(state: tauri::State<AppState>) -> ApiResponse<Vec<Task>> {
     }
 
     ApiResponse::ok(tasks)
+}
+
+#[tauri::command]
+fn get_favorites(state: tauri::State<AppState>) -> ApiResponse<Vec<Favorite>> {
+    let config = &state.config;
+    let table_id = match config.favorites_table_id() {
+        Some(id) => id,
+        None => return ApiResponse::err("未配置锦囊表 ID"),
+    };
+
+    let args = vec![
+        "--format".to_string(),
+        "json".to_string(),
+        "base".to_string(),
+        "+record-list".to_string(),
+        "--base-token".to_string(),
+        config.base_token.clone(),
+        "--table-id".to_string(),
+        table_id.clone(),
+        "--limit".to_string(),
+        "200".to_string(),
+    ];
+
+    let output = match run_lark_cli(&config.profile, &args) {
+        Ok(o) => o,
+        Err(e) => return ApiResponse::err(e),
+    };
+
+    let resp: LarkResponse<RecordListData> = match serde_json::from_str(&output) {
+        Ok(r) => r,
+        Err(e) => return ApiResponse::err(format!("解析响应失败: {}\n{}", e, output)),
+    };
+
+    if !resp.ok {
+        return ApiResponse::err(
+            resp.error
+                .map(|e| e.message)
+                .unwrap_or_else(|| "获取锦囊失败".to_string()),
+        );
+    }
+
+    let raw = match resp.data {
+        Some(d) => d,
+        None => return ApiResponse::ok(vec![]),
+    };
+
+    let mut favorites = Vec::new();
+    for (idx, row) in raw.data.iter().enumerate() {
+        let record_id = raw.record_id_list.get(idx).cloned().unwrap_or_default();
+        let mut fields_map: HashMap<String, serde_json::Value> = HashMap::new();
+        for (field_idx, field_name) in raw.fields.iter().enumerate() {
+            if let Some(val) = row.get(field_idx) {
+                fields_map.insert(field_name.clone(), val.clone());
+            }
+        }
+        favorites.push(fields_map_to_favorite(record_id, fields_map));
+    }
+
+    ApiResponse::ok(favorites)
+}
+
+#[tauri::command]
+fn get_tags(state: tauri::State<AppState>) -> ApiResponse<Vec<Tag>> {
+    let config = &state.config;
+    let table_id = match config.tags_table_id() {
+        Some(id) => id,
+        None => return ApiResponse::ok(vec![]),
+    };
+
+    let args = vec![
+        "--format".to_string(),
+        "json".to_string(),
+        "base".to_string(),
+        "+record-list".to_string(),
+        "--base-token".to_string(),
+        config.base_token.clone(),
+        "--table-id".to_string(),
+        table_id.clone(),
+        "--limit".to_string(),
+        "200".to_string(),
+    ];
+
+    let output = match run_lark_cli(&config.profile, &args) {
+        Ok(o) => o,
+        Err(e) => return ApiResponse::err(e),
+    };
+
+    let resp: LarkResponse<RecordListData> = match serde_json::from_str(&output) {
+        Ok(r) => r,
+        Err(e) => return ApiResponse::err(format!("解析响应失败: {}\n{}", e, output)),
+    };
+
+    if !resp.ok {
+        return ApiResponse::err(
+            resp.error
+                .map(|e| e.message)
+                .unwrap_or_else(|| "获取标签失败".to_string()),
+        );
+    }
+
+    let raw = match resp.data {
+        Some(d) => d,
+        None => return ApiResponse::ok(vec![]),
+    };
+
+    let mut tags = Vec::new();
+    for (idx, row) in raw.data.iter().enumerate() {
+        let record_id = raw.record_id_list.get(idx).cloned().unwrap_or_default();
+        let mut fields_map: HashMap<String, serde_json::Value> = HashMap::new();
+        for (field_idx, field_name) in raw.fields.iter().enumerate() {
+            if let Some(val) = row.get(field_idx) {
+                fields_map.insert(field_name.clone(), val.clone());
+            }
+        }
+        tags.push(fields_map_to_tag(record_id, fields_map));
+    }
+
+    ApiResponse::ok(tags)
+}
+
+#[tauri::command]
+fn create_favorite(
+    state: tauri::State<AppState>,
+    name: String,
+    link: String,
+    description: String,
+    category: String,
+    tags: Vec<String>,
+) -> ApiResponse<serde_json::Value> {
+    if name.trim().is_empty() {
+        return ApiResponse::err("名称不能为空");
+    }
+    let config = &state.config;
+    let table_id = match config.favorites_table_id() {
+        Some(id) => id,
+        None => return ApiResponse::err("未配置锦囊表 ID"),
+    };
+
+    let mut fields = vec!["名称", "链接", "描述", "分类"];
+    let mut row: Vec<serde_json::Value> = vec![
+        name.trim().into(),
+        link.trim().into(),
+        description.trim().into(),
+        category.trim().into(),
+    ];
+
+    if !tags.is_empty() {
+        fields.push("标签");
+        row.push(tags.into());
+    }
+
+    let json_data = serde_json::json!({ "fields": fields, "rows": [row] });
+    let (json_file, path_str) = tmp_json_path("fav_batch");
+
+    if let Err(e) = std::fs::write(&json_file, json_data.to_string()) {
+        return ApiResponse::err(format!("写入临时文件失败: {}", e));
+    }
+    let _guard = TmpGuard::new(json_file.clone());
+
+    let args = vec![
+        "base".to_string(),
+        "+record-batch-create".to_string(),
+        "--base-token".to_string(),
+        config.base_token.clone(),
+        "--table-id".to_string(),
+        table_id.clone(),
+        "--json".to_string(),
+        format!("@{}", path_str),
+    ];
+
+    let output = match run_lark_cli(&config.profile, &args) {
+        Ok(o) => o,
+        Err(e) => return ApiResponse::err(e),
+    };
+
+    let resp: LarkResponse<RecordListData> = match serde_json::from_str(&output) {
+        Ok(r) => r,
+        Err(e) => return ApiResponse::err(format!("解析响应失败: {}\n{}", e, output)),
+    };
+
+    if !resp.ok {
+        return ApiResponse::err(
+            resp.error
+                .map(|e| e.message)
+                .unwrap_or_else(|| "创建失败".to_string()),
+        );
+    }
+
+    let raw = match resp.data {
+        Some(d) => d,
+        None => return ApiResponse::ok(serde_json::json!({ "created": true })),
+    };
+
+    let record_id = raw.record_id_list.get(0).cloned().unwrap_or_default();
+    if record_id.is_empty() {
+        return ApiResponse::ok(serde_json::json!({ "created": true }));
+    }
+
+    let mut fields_map: HashMap<String, serde_json::Value> = HashMap::new();
+    if let Some(first_row) = raw.data.get(0) {
+        for (field_idx, field_name) in raw.fields.iter().enumerate() {
+            if let Some(val) = first_row.get(field_idx) {
+                fields_map.insert(field_name.clone(), val.clone());
+            }
+        }
+    }
+    let favorite = fields_map_to_favorite(record_id, fields_map);
+    match serde_json::to_value(favorite) {
+        Ok(v) => ApiResponse::ok(v),
+        Err(_) => ApiResponse::ok(serde_json::json!({ "created": true })),
+    }
+}
+
+#[tauri::command]
+fn update_favorite(
+    state: tauri::State<AppState>,
+    mut payload: std::collections::HashMap<String, serde_json::Value>,
+) -> ApiResponse<serde_json::Value> {
+    let id = match payload.remove("id") {
+        Some(serde_json::Value::String(s)) => s,
+        _ => return ApiResponse::err("缺少记录 ID"),
+    };
+    let config = &state.config;
+    let table_id = match config.favorites_table_id() {
+        Some(id) => id,
+        None => return ApiResponse::err("未配置锦囊表 ID"),
+    };
+
+    log(&format!(
+        "update_favorite 开始: record_id={}, payload={}",
+        id,
+        serde_json::to_string(&payload).unwrap_or_default()
+    ));
+
+    let (json_file, path_str) = tmp_json_path("fav_upsert");
+
+    if let Err(e) = std::fs::write(
+        &json_file,
+        serde_json::to_string(&payload).unwrap_or_default(),
+    ) {
+        return ApiResponse::err(format!("写入临时文件失败: {}", e));
+    }
+    let _guard = TmpGuard::new(json_file.clone());
+
+    let args = vec![
+        "base".to_string(),
+        "+record-upsert".to_string(),
+        "--base-token".to_string(),
+        config.base_token.clone(),
+        "--table-id".to_string(),
+        table_id.clone(),
+        "--record-id".to_string(),
+        id.clone(),
+        "--json".to_string(),
+        format!("@{}", path_str),
+    ];
+
+    let output = match run_lark_cli(&config.profile, &args) {
+        Ok(o) => o,
+        Err(e) => return ApiResponse::err(e),
+    };
+
+    log(&format!(
+        "update_favorite upsert 响应: record_id={}, output={}",
+        id, output
+    ));
+
+    let resp: LarkResponse<serde_json::Value> = match serde_json::from_str(&output) {
+        Ok(r) => r,
+        Err(e) => return ApiResponse::err(format!("解析响应失败: {}\n{}", e, output)),
+    };
+
+    if !resp.ok {
+        return ApiResponse::err(
+            resp.error
+                .map(|e| e.message)
+                .unwrap_or_else(|| "更新失败".to_string()),
+        );
+    }
+
+    ApiResponse::ok(serde_json::json!({ "updated": true }))
+}
+
+#[tauri::command]
+fn delete_favorite(state: tauri::State<AppState>, id: String) -> ApiResponse<serde_json::Value> {
+    let config = &state.config;
+    let table_id = match config.favorites_table_id() {
+        Some(id) => id,
+        None => return ApiResponse::err("未配置锦囊表 ID"),
+    };
+
+    let args = vec![
+        "base".to_string(),
+        "+record-delete".to_string(),
+        "--base-token".to_string(),
+        config.base_token.clone(),
+        "--table-id".to_string(),
+        table_id.clone(),
+        "--record-id".to_string(),
+        id,
+        "--yes".to_string(),
+    ];
+
+    let output = match run_lark_cli(&config.profile, &args) {
+        Ok(o) => o,
+        Err(e) => return ApiResponse::err(e),
+    };
+
+    let resp: LarkResponse<serde_json::Value> = match serde_json::from_str(&output) {
+        Ok(r) => r,
+        Err(e) => return ApiResponse::err(format!("解析响应失败: {}\n{}", e, output)),
+    };
+
+    if !resp.ok {
+        return ApiResponse::err(
+            resp.error
+                .map(|e| e.message)
+                .unwrap_or_else(|| "删除失败".to_string()),
+        );
+    }
+
+    ApiResponse::ok(serde_json::json!({}))
 }
 
 #[tauri::command]
@@ -1091,6 +1556,11 @@ fn main() {
             create_task,
             update_task,
             delete_task,
+            get_favorites,
+            create_favorite,
+            update_favorite,
+            delete_favorite,
+            get_tags,
             toggle_collapse,
             set_always_on_top,
             minimize_window,

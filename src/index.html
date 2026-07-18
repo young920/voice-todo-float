@@ -1659,6 +1659,8 @@ async function addFavorite(name, link, description, category, tags) {
       if (idx >= 0) favorites[idx] = data.data;
       else favorites.unshift(data.data);
       renderFavorites();
+      // 3 秒后延迟刷新，等待飞书多维表缓存刷新
+      setTimeout(() => loadFavorites({ silent: true }), 3000);
     } else if (data.code === 0) {
       showToast('已添加');
       setTimeout(() => loadFavorites({ silent: true }), 3000);
@@ -1706,13 +1708,13 @@ async function updateFavorite(id, name, link, description, category, tags) {
       "链接": link.trim(),
       "描述": description.trim(),
       "分类": category.trim() || '未分类',
+      "标签": tags,
     };
-    if (tags.length > 0) {
-      payload["标签"] = tags;
-    }
     const data = await invoke('update_favorite', payload);
     if (data.code === 0) {
       showToast('已保存');
+      // 3 秒后延迟刷新，等待飞书多维表缓存刷新
+      setTimeout(() => loadFavorites({ silent: true }), 3000);
     } else {
       Object.assign(fav, old);
       updateCategories();
@@ -1862,6 +1864,8 @@ async function addTask(name, priority = '中', deadline = null) {
         tasks.unshift(serverTask);
       }
       renderTasks();
+      // 3 秒后延迟刷新，等待飞书多维表缓存刷新
+      setTimeout(() => loadTasks({ silent: true }), 3000);
     } else if (data.code === 0) {
       showToast('已添加');
       // Keep temp task; try to refresh after a delay to get real record id
@@ -1910,23 +1914,8 @@ async function updateTask(id, name, priority, deadline, link, note) {
     const data = await invoke('update_task', { payload });
     if (data.code === 0) {
       showToast('已更新');
-      // 后端已保存并拉取最新记录，用实际数据覆盖本地状态，
-      // 但对于刚发送的非空备注/链接，若服务端返回空（可能是 Base 缓存未更新）则保留优化更新并延迟刷新
-      const currentTask = tasks.find(t => t.id === id);
-      if (currentTask && data.data && data.data.id === id) {
-        const serverTask = data.data;
-        const merged = { ...serverTask };
-        // 如果刚发送的是非空备注/链接，服务端返回空，认为缓存未更新，保留优化值
-        if (note && !serverTask.note) merged.note = note;
-        if (link && !serverTask.link) merged.link = link;
-        // 映射后端的 type 字段到前端的 task_type
-        if (serverTask.type && !serverTask.task_type) merged.task_type = serverTask.type;
-        Object.assign(currentTask, merged);
-        renderTasks();
-        if ((note && !serverTask.note) || (link && !serverTask.link)) {
-          setTimeout(() => loadTasks({ silent: true }), 3000);
-        }
-      }
+      // 优化更新已经使页面反应，3 秒后延迟刷新同步飞书多维表最终状态
+      setTimeout(() => loadTasks({ silent: true }), 3000);
     } else {
       // Rollback on failure
       const currentTask = tasks.find(t => t.id === id);
@@ -1969,14 +1958,8 @@ async function toggleTaskStatus(id) {
     const data = await invoke('update_task', { payload });
     if (data.code === 0) {
       showToast(newStatus === '已完成' ? '已批' : '已恢复');
-      // 如果后端返回了最新记录，用实际数据覆盖本地状态
-      if (data.data && data.data.id === id) {
-        const currentTask = tasks.find(t => t.id === id);
-        if (currentTask) {
-          Object.assign(currentTask, data.data);
-          renderTasks();
-        }
-      }
+      // 3 秒后延迟刷新，等待飞书多维表缓存刷新
+      setTimeout(() => loadTasks({ silent: true }), 3000);
     } else {
       // Rollback
       task.status = oldStatus;

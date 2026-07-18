@@ -1,6 +1,6 @@
 [package]
 name = "voice-todo-float"
-version = "1.0.12"
+version = "1.0.13"
 description = "语音待办 - 桌面悬浮小部件"
 authors = ["yang"]
 edition = "2021"

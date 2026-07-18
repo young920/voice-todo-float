@@ -172,7 +172,7 @@ fn project_root() -> PathBuf {
 }
 
 fn tmp_json_dir() -> PathBuf {
-    project_root().join("tmp")
+    config_dir().join("tmp")
 }
 
 fn tmp_json_path(prefix: &str) -> (PathBuf, String) {
@@ -183,12 +183,10 @@ fn tmp_json_path(prefix: &str) -> (PathBuf, String) {
         .unwrap_or_default()
         .as_millis();
     let file = dir.join(format!("{}_{}.json", prefix, ts));
-    let root = project_root();
     let rel = file
-        .strip_prefix(&root)
-        .unwrap_or(&file)
-        .to_string_lossy()
-        .to_string();
+        .file_name()
+        .map(|s| s.to_string_lossy().to_string())
+        .unwrap_or_else(|| format!("{}_{}.json", prefix, ts));
     (file, rel)
 }
 
@@ -274,6 +272,7 @@ struct RecordListData {
     record_id_list: Vec<String>,
 }
 
+#[allow(dead_code)]
 fn parse_single_record_response(id: &str, output: &str) -> Result<Task, String> {
     let value: serde_json::Value = serde_json::from_str(output)
         .map_err(|e| format!("解析 record-get 响应失败: {}\n{}", e, output))?;
@@ -350,6 +349,7 @@ fn parse_single_record_response(id: &str, output: &str) -> Result<Task, String> 
     Ok(fields_map_to_task(record_id, fields_map))
 }
 
+#[allow(dead_code)]
 fn fetch_record(config: &Config, id: &str) -> Result<Task, String> {
     let args = vec![
         "--format".to_string(),
@@ -766,7 +766,7 @@ fn run_lark_cli(profile: &str, args: &[String]) -> Result<String, String> {
     ));
 
     let mut cmd = build_command_with_executable(&cli);
-    cmd.current_dir(project_root())
+    cmd.current_dir(tmp_json_dir())
         .args(&full_args)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
@@ -1345,27 +1345,9 @@ fn update_task(
         );
     }
 
-    // 立即拉取最新记录，确保前端状态与 Base 一致
-    match fetch_record(config, &id) {
-        Ok(task) => {
-            log(&format!(
-                "update_task 拉取成功: record_id={}, note={:?}, link={:?}",
-                id, task.note, task.link
-            ));
-            match serde_json::to_value(task) {
-                Ok(v) => ApiResponse::ok(v),
-                Err(e) => ApiResponse::err(format!("序列化任务失败: {}", e)),
-            }
-        }
-        Err(e) => {
-            log(&format!(
-                "update_task 拉取记录失败: record_id={}, err={}",
-                id, e
-            ));
-            // 拉取失败不影响更新本身，仍返回成功
-            ApiResponse::ok(serde_json::json!({ "updated": true }))
-        }
-    }
+    // 不立即拉取：飞书多维表缓存导致刚保存的值可能被立即获取时的旧值覆盖，
+    // 前端已经优化更新并会延迟刷新，这里只返回成功即可
+    ApiResponse::ok(serde_json::json!({ "updated": true }))
 }
 
 #[tauri::command]

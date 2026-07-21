@@ -172,7 +172,16 @@ fn project_root() -> PathBuf {
 }
 
 fn tmp_json_dir() -> PathBuf {
-    config_dir().join("tmp")
+    let dir = if cfg!(target_os = "macos") {
+        std::env::var("HOME")
+            .map(PathBuf::from)
+            .unwrap_or_else(|_| PathBuf::from("/tmp"))
+            .join(".voice-todo-float-tmp")
+    } else {
+        config_dir().join("tmp")
+    };
+    let _ = std::fs::create_dir_all(&dir);
+    dir
 }
 
 fn tmp_json_path(prefix: &str) -> (PathBuf, String) {
@@ -240,6 +249,8 @@ struct Favorite {
     category: String,
     #[serde(rename = "created_at")]
     created_at: Option<String>,
+    #[serde(rename = "重要程度")]
+    priority: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -529,6 +540,7 @@ fn fields_map_to_favorite(
         tags: get_str_array("标签"),
         category: get_str("分类"),
         created_at: get_opt_str("创建时间"),
+        priority: get_opt_str("重要程度"),
     }
 }
 
@@ -1002,6 +1014,7 @@ fn create_favorite(
     description: String,
     category: String,
     tags: Vec<String>,
+    priority: Option<String>,
 ) -> ApiResponse<serde_json::Value> {
     if name.trim().is_empty() {
         return ApiResponse::err("名称不能为空");
@@ -1012,13 +1025,24 @@ fn create_favorite(
         None => return ApiResponse::err("未配置锦囊表 ID"),
     };
 
-    let mut fields = vec!["名称", "链接", "描述", "分类"];
+    let mut fields = vec!["名称", "链接", "描述"];
     let mut row: Vec<serde_json::Value> = vec![
         name.trim().into(),
         link.trim().into(),
         description.trim().into(),
-        category.trim().into(),
     ];
+
+    if !category.trim().is_empty() {
+        fields.push("分类");
+        row.push(category.trim().into());
+    }
+
+    if let Some(p) = priority {
+        if !p.is_empty() {
+            fields.push("重要程度");
+            row.push(p.into());
+        }
+    }
 
     if !tags.is_empty() {
         fields.push("标签");
@@ -1090,29 +1114,47 @@ fn create_favorite(
 #[tauri::command]
 fn update_favorite(
     state: tauri::State<AppState>,
-    mut payload: std::collections::HashMap<String, serde_json::Value>,
+    id: String,
+    name: String,
+    link: String,
+    description: String,
+    category: String,
+    tags: Vec<String>,
+    priority: Option<String>,
 ) -> ApiResponse<serde_json::Value> {
-    let id = match payload.remove("id") {
-        Some(serde_json::Value::String(s)) => s,
-        _ => return ApiResponse::err("缺少记录 ID"),
-    };
     let config = &state.config;
     let table_id = match config.favorites_table_id() {
         Some(id) => id,
         None => return ApiResponse::err("未配置锦囊表 ID"),
     };
 
+    let mut payload_map: HashMap<String, serde_json::Value> = HashMap::new();
+    payload_map.insert("名称".to_string(), name.trim().into());
+    payload_map.insert("链接".to_string(), link.trim().into());
+    payload_map.insert("描述".to_string(), description.trim().into());
+    if !category.trim().is_empty() {
+        payload_map.insert("分类".to_string(), category.trim().into());
+    }
+    if let Some(p) = priority {
+        if !p.is_empty() {
+            payload_map.insert("重要程度".to_string(), p.into());
+        }
+    }
+    if !tags.is_empty() {
+        payload_map.insert("标签".to_string(), tags.into());
+    }
+
     log(&format!(
         "update_favorite 开始: record_id={}, payload={}",
         id,
-        serde_json::to_string(&payload).unwrap_or_default()
+        serde_json::to_string(&payload_map).unwrap_or_default()
     ));
 
     let (json_file, path_str) = tmp_json_path("fav_upsert");
 
     if let Err(e) = std::fs::write(
         &json_file,
-        serde_json::to_string(&payload).unwrap_or_default(),
+        serde_json::to_string(&payload_map).unwrap_or_default(),
     ) {
         return ApiResponse::err(format!("写入临时文件失败: {}", e));
     }

@@ -523,8 +523,16 @@ fn fields_map_to_favorite(
                     arr.iter()
                         .filter_map(|f| f.as_str().map(|s| s.to_string()))
                         .collect()
-                } else if v.is_string() {
-                    vec![v.as_str().unwrap_or("").to_string()]
+                } else if let Some(s) = v.as_str() {
+                    // Base 标签 列是 plain text; 新写入是逗号分隔字符串,
+                    // 旧记录可能是单字符串 "AI" 或者被某些 lark-cli 版本
+                    // 序列化成 "[\"AI\"]"。统一按 ",", "[", "]", 逗号, 全角逗号拆分。
+                    s.trim_matches(|c| c == '[' || c == ']')
+                        .split(|c: char| c == ',' || c == '，' || c == ' ' || c == '、')
+                        .map(|s| s.trim().trim_matches('"').trim_matches('\''))
+                        .filter(|s| !s.is_empty())
+                        .map(|s| s.to_string())
+                        .collect()
                 } else {
                     vec![]
                 }
@@ -1046,7 +1054,7 @@ fn create_favorite(
 
     if !tags.is_empty() {
         fields.push("标签");
-        row.push(tags.into());
+        row.push(tags.join(",").into());
     }
 
     let json_data = serde_json::json!({ "fields": fields, "rows": [row] });
@@ -1141,7 +1149,7 @@ fn update_favorite(
         }
     }
     if !tags.is_empty() {
-        payload_map.insert("标签".to_string(), tags.into());
+        payload_map.insert("标签".to_string(), tags.join(",").into());
     }
 
     log(&format!(

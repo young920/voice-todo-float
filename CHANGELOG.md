@@ -57,6 +57,18 @@ single commit on `main`.
   previous form expected the frontend to send a single object keyed by
   `payload`; the actual frontend call passes flat args, which would
   have caused `missing required key payload` errors on save.
+- **Favorites 标签 (tags) save silently failed at the Base layer.**
+  `create_favorite` / `update_favorite` were pushing the raw
+  `Vec<String>` into a plain-text cell, which Base rejects with
+  `800010407 "The cell value does not match the expected input shape"`.
+  Tags are now joined with `,` before writing and split back into a
+  `Vec<String>` on read. This bug existed in 1.0.13 (introduced in
+  the favorites module rewrite `cf92c25f`); affected any save with
+  one or more tags.
+  Verified end-to-end against the live Base via `lark-cli`:
+  create with `["qa","1.0.14","end2end"]` writes cell `"qa,1.0.14,end2end"`,
+  update with `priority=中` + new tags reflects after the standard
+  ~3-5s eventual-consistency window.
 
 ### Internal
 - Version bumped in `package.json`, `src-tauri/tauri.conf.json`,
@@ -64,6 +76,9 @@ single commit on `main`.
 - Two atomic commits on top of 1.0.13:
   - `486dad9` backend (priority + signature + macOS tmp)
   - `3c2119a` frontend (priority UI + tag relaxation + select + title)
+- One follow-up bug fix:
+  - `62d1642` fix tags to write as comma-joined string (Base plain-text
+    cell rejected the raw `Vec<String>`)
 
 ---
 

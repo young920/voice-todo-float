@@ -22,6 +22,28 @@ single commit on `main`.
 
 ---
 
+## [1.0.15] - 2026-07-21
+
+### Fixed
+- **Fresh installs on Windows could not sync favorites/tags.** `未配置锦囊表ID`
+  / `未配置标签表ID` errors appeared because the legacy `Config::load()`
+  returned `None` when `favorites_table_id` / `tags_table_id` were missing
+  from `config.json`. 1.0.13-era configs (which never wrote those fields)
+  hit this path every time.
+  `Config::load()` now backfills any missing/empty field from bundled
+  defaults and persists the updated config back to disk, so the upgrade
+  sticks across restarts. Fresh installs (no config file at all) now
+  bootstrap with a fully populated `config.json` instead of an empty
+  template that forces the user to fill it in by hand.
+
+### Internal
+- Version bumped in `package.json`, `src-tauri/tauri.conf.json`,
+  `src-tauri/Cargo.toml`, `src-tauri/Cargo.lock` (1.0.14 → 1.0.15).
+- One feature commit + one version-bump commit, kept separate so the
+  fix can be cherry-picked if needed.
+
+---
+
 ## [1.0.14] - 2026-07-21
 
 ### Added

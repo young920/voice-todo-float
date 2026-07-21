@@ -33,14 +33,68 @@ struct Config {
     tags_table_id: Option<String>,
 }
 
+// Bundled defaults — applied when a field is missing or empty in the user's
+// config.json. Bundling values into the binary (instead of relying on a
+// separately-shipped config file) means fresh installs on Windows work
+// out-of-the-box, and 1.0.13-era configs auto-upgrade on first launch.
+//
+// NOTE: profile, base_token, and table IDs all belong to the app author
+// (Yang's own Feishu workspace / lark-cli setup). Hardcoding them is
+// intentional — this is a single-tenant personal tool, not a multi-user
+// product. Existing non-empty user values are never overwritten.
+const DEFAULT_BASE_TOKEN: &str = "UB9MbMmHFaJRISs6jwqc5jLtnBz";
+const DEFAULT_TABLE_ID: &str = "tblC5qyGBp6u3HcK";
+const DEFAULT_PROFILE: &str = "cli_a976ca0e1c39dbda";
+const DEFAULT_FAVORITES_TABLE_ID: &str = "tblMWc2mZ5kVLv4L";
+const DEFAULT_TAGS_TABLE_ID: &str = "tblfXvTCLxXFGRlV";
+
 impl Config {
     fn load() -> Result<Self, String> {
         let path = config_path();
         let content = std::fs::read_to_string(&path)
             .map_err(|e| format!("无法读取配置文件 {}: {}", path.display(), e))?;
-        let config: Config =
+        let mut config: Config =
             serde_json::from_str(&content).map_err(|e| format!("解析配置文件失败: {}", e))?;
-        // Migration: if old config lacks favorites/tags table IDs, leave them None
+
+        // Backfill any missing/empty field from bundled defaults, then persist
+        // so the upgrade sticks across restarts.
+        let mut changed = false;
+        if config.base_token.trim().is_empty() {
+            config.base_token = DEFAULT_BASE_TOKEN.to_string();
+            changed = true;
+        }
+        if config.table_id.trim().is_empty() {
+            config.table_id = DEFAULT_TABLE_ID.to_string();
+            changed = true;
+        }
+        if config.profile.trim().is_empty() {
+            config.profile = DEFAULT_PROFILE.to_string();
+            changed = true;
+        }
+        if config
+            .favorites_table_id
+            .as_ref()
+            .map(|s| s.trim().is_empty())
+            .unwrap_or(true)
+        {
+            config.favorites_table_id = Some(DEFAULT_FAVORITES_TABLE_ID.to_string());
+            changed = true;
+        }
+        if config
+            .tags_table_id
+            .as_ref()
+            .map(|s| s.trim().is_empty())
+            .unwrap_or(true)
+        {
+            config.tags_table_id = Some(DEFAULT_TAGS_TABLE_ID.to_string());
+            changed = true;
+        }
+        if changed {
+            let serialized = serde_json::to_string_pretty(&config)
+                .map_err(|e| format!("序列化配置失败: {}", e))?;
+            std::fs::write(&path, serialized).map_err(|e| format!("写入配置文件失败: {}", e))?;
+            log(&format!("已用默认值补全配置: {}", path.display()));
+        }
         Ok(config)
     }
 
@@ -148,23 +202,21 @@ fn ensure_config() -> Result<Config, String> {
 
     let dir = config_dir();
     std::fs::create_dir_all(&dir).map_err(|e| format!("创建配置目录失败: {}", e))?;
+    // Write a fully-populated config with bundled defaults so the app works
+    // out-of-the-box on first install (no manual file editing required).
     let template = serde_json::json!({
-        "base_token": "",
-        "table_id": "",
-        "profile": ""
+        "base_token": DEFAULT_BASE_TOKEN,
+        "table_id": DEFAULT_TABLE_ID,
+        "profile": DEFAULT_PROFILE,
+        "favorites_table_id": DEFAULT_FAVORITES_TABLE_ID,
+        "tags_table_id": DEFAULT_TAGS_TABLE_ID
     });
     let content =
         serde_json::to_string_pretty(&template).map_err(|e| format!("序列化配置失败: {}", e))?;
-    std::fs::write(&path, content).map_err(|e| format!("写入配置文件失败: {}", e))?;
-    log(&format!(
-        "已创建配置文件模板: {}，请填写 base_token、table_id、profile 后重启",
-        path.display()
-    ));
+    std::fs::write(&path, &content).map_err(|e| format!("写入配置文件失败: {}", e))?;
+    log(&format!("首次启动，已创建默认配置: {}", path.display()));
 
-    Err(format!(
-        "配置文件不存在，已创建模板：{}。请填写 base_token、table_id、profile 后重启应用。",
-        path.display()
-    ))
+    serde_json::from_str(&content).map_err(|e| format!("解析默认配置失败: {}", e))
 }
 
 fn project_root() -> PathBuf {

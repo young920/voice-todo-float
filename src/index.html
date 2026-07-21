@@ -166,6 +166,11 @@ body::before {
   font-weight: 700;
   color: var(--cinnabar);
   letter-spacing: 0.12em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 120px;
+  display: inline-block;
 }
 
 .title-bar .title::before {
@@ -970,7 +975,8 @@ body.favorites-mode .btn-add { display: flex; }
   flex: 1;
 }
 .favorite-edit-form input,
-.favorite-edit-form textarea {
+.favorite-edit-form textarea,
+.favorite-edit-form select {
   box-sizing: border-box;
   width: 100%;
   padding: 6px 8px;
@@ -982,10 +988,21 @@ body.favorites-mode .btn-add { display: flex; }
   font-size: 13px;
   outline: none;
   resize: none;
+  height: 32px;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}
+.favorite-edit-form select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  padding-right: 24px;
 }
 .favorite-edit-form input:focus,
-.favorite-edit-form textarea:focus { border-color: var(--cinnabar); }
-.favorite-edit-form textarea { min-height: 60px; }
+.favorite-edit-form textarea:focus,
+.favorite-edit-form select:focus { border-color: var(--cinnabar); }
+.favorite-edit-form textarea { min-height: 60px; height: auto; }
 .favorite-edit-actions {
   display: flex;
   gap: 8px;
@@ -1055,6 +1072,28 @@ body.favorites-mode .btn-add { display: flex; }
   color: var(--cinnabar);
   font-size: 11px;
   letter-spacing: 0.04em;
+}
+.priority-badge {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  vertical-align: middle;
+  margin-left: 4px;
+}
+.priority-高 {
+  background: #fee2e2;
+  color: #dc2626;
+}
+.priority-中 {
+  background: #fef3c7;
+  color: #d97706;
+}
+.priority-低 {
+  background: #dbeafe;
+  color: #2563eb;
 }
 .favorite-category {
   margin-top: 8px;
@@ -1226,8 +1265,8 @@ function getValidTagNames() {
 }
 
 function filterValidTags(rawTags) {
-  const validNames = new Set(getValidTagNames());
-  return rawTags.filter(t => validNames.has(t));
+  // Allow any non-empty tag; no longer require pre-existing tags in the tags table
+  return rawTags.filter(t => t && t.trim());
 }
 
 function getCategoryFilterOptions() {
@@ -1249,7 +1288,8 @@ async function invoke(cmd, args = {}) {
     if (!window.__TAURI__.core) {
       throw new Error('window.__TAURI__.core is undefined');
     }
-    return await window.__TAURI__.core.invoke(cmd, args);
+    const result = await window.__TAURI__.core.invoke(cmd, args);
+    return result;
   } catch (error) {
     console.log('invoke error ' + cmd + ': ' + error.message);
     showToast('调用失败: ' + error.message);
@@ -1454,23 +1494,36 @@ function filterFavorites() {
   const tagKw = favSearch.tag.toLowerCase().trim();
   const descKw = favSearch.desc.toLowerCase().trim();
   const linkKw = favSearch.link.toLowerCase().trim();
-  
-  return favorites.filter(fav => {
-    if (currentCategory !== '全部' && (fav.category || '未分类') !== currentCategory) return false;
-    if (catKw && (fav.category || '未分类') !== catKw) return false;
-    if (nameKw && !(fav.name || '').toLowerCase().includes(nameKw)) return false;
-    if (tagKw) {
-      const tagStr = (fav.tags || []).join(' ').toLowerCase();
-      if (!tagStr.includes(tagKw)) return false;
-    }
-    if (descKw) {
-      const desc = (fav.description || '').toLowerCase();
-      const link = (fav.link || '').toLowerCase();
-      if (!desc.includes(descKw) && !link.includes(descKw)) return false;
-    }
-    if (linkKw && !(fav.link || '').toLowerCase().includes(linkKw)) return false;
-    return true;
-  });
+
+    const priorityOrder = { '高': 3, '中': 2, '低': 1, '': 0, undefined: 0 };
+
+    return favorites
+      .filter(fav => {
+        if (currentCategory !== '全部' && (fav.category || '未分类') !== currentCategory) return false;
+        if (catKw && (fav.category || '未分类') !== catKw) return false;
+        if (nameKw && !(fav.name || '').toLowerCase().includes(nameKw)) return false;
+        if (tagKw) {
+          const tagStr = (fav.tags || []).join(' ').toLowerCase();
+          if (!tagStr.includes(tagKw)) return false;
+        }
+        if (descKw) {
+          const desc = (fav.description || '').toLowerCase();
+          const link = (fav.link || '').toLowerCase();
+          if (!desc.includes(descKw) && !link.includes(descKw)) return false;
+        }
+        if (linkKw && !(fav.link || '').toLowerCase().includes(linkKw)) return false;
+        return true;
+      })
+      .sort((a, b) => {
+        // Sort by created_at desc (newest first)
+        const timeA = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const timeB = b.created_at ? new Date(b.created_at).getTime() : 0;
+        if (timeB !== timeA) return timeB - timeA;
+        // Same time: sort by priority desc (高 > 中 > 低 > none)
+        const pA = priorityOrder[a.priority] || 0;
+        const pB = priorityOrder[b.priority] || 0;
+        return pB - pA;
+      });
 }
 
 function applyFavFilters() {
@@ -1529,11 +1582,12 @@ function renderFavoriteCard(fav) {
   const tagsHtml = (fav.tags || []).map(tag => `<span class="favorite-tag">${escapeHtml(tag)}</span>`).join('');
   const linkUrl = fav.link ? escapeHtml(normalizeUrl(fav.link)) : '';
   const linkHtml = fav.link ? `<span class="favorite-link-btn" data-action="open-link" data-url="${linkUrl}">打开链接</span>` : '';
+  const priorityBadge = fav.priority ? `<span class="priority-badge priority-${fav.priority}">${escapeHtml(fav.priority)}</span>` : '';
 
   return `
     <div class="favorite-item" data-fav-id="${escapeHtml(fav.id)}">
       <div class="favorite-item-header">
-        <div class="favorite-title">${escapeHtml(fav.name)}</div>
+        <div class="favorite-title">${escapeHtml(fav.name)} ${priorityBadge}</div>
         <div class="favorite-actions">
           <button class="favorite-action-btn" data-action="edit-fav" data-fav-id="${escapeHtml(fav.id)}" title="编辑">改</button>
           <button class="favorite-action-btn" data-action="delete-fav" data-fav-id="${escapeHtml(fav.id)}" title="删除">删</button>
@@ -1573,10 +1627,19 @@ function renderFavoriteEditForm(fav) {
           <datalist id="favEditCategoryList">${categoryOptions}</datalist>
         </div>
         <div class="form-field">
-          <label class="form-label">标签</label>
-          <input type="text" class="search-input" id="favEditTags-${fav.id}" list="favEditTagList-${fav.id}" value="${escapeHtml(tags)}" placeholder="用逗号分隔，仅可选已有标签">
-          <datalist id="favEditTagList-${fav.id}">${tagOptions}</datalist>
+          <label class="form-label">重要程度</label>
+          <select id="favEditPriority-${fav.id}">
+            <option value="" ${!fav.priority ? 'selected' : ''}>无</option>
+            <option value="高" ${fav.priority === '高' ? 'selected' : ''}>高</option>
+            <option value="中" ${fav.priority === '中' ? 'selected' : ''}>中</option>
+            <option value="低" ${fav.priority === '低' ? 'selected' : ''}>低</option>
+          </select>
         </div>
+      </div>
+      <div class="form-field">
+        <label class="form-label">标签</label>
+        <input type="text" class="search-input" id="favEditTags-${fav.id}" list="favEditTagList-${fav.id}" value="${escapeHtml(tags)}" placeholder="用逗号分隔">
+        <datalist id="favEditTagList-${fav.id}">${tagOptions}</datalist>
       </div>
       <div class="favorite-edit-actions">
         <button data-action="cancel-edit-fav">取消</button>
@@ -1611,10 +1674,19 @@ function renderFavoriteAddForm() {
           <datalist id="favAddCategoryList">${categoryOptions}</datalist>
         </div>
         <div class="form-field">
-          <label class="form-label">标签</label>
-          <input type="text" class="search-input" id="favAddTags" list="favAddTagList" placeholder="用逗号分隔，仅可选已有标签">
-          <datalist id="favAddTagList">${tagOptions}</datalist>
+          <label class="form-label">重要程度</label>
+          <select id="favAddPriority">
+            <option value="" selected>无</option>
+            <option value="高">高</option>
+            <option value="中">中</option>
+            <option value="低">低</option>
+          </select>
         </div>
+      </div>
+      <div class="form-field">
+        <label class="form-label">标签</label>
+        <input type="text" class="search-input" id="favAddTags" list="favAddTagList" placeholder="用逗号分隔">
+        <datalist id="favAddTagList">${tagOptions}</datalist>
       </div>
       <div class="favorite-edit-actions">
         <button data-action="cancel-add-fav">取消</button>
@@ -1624,7 +1696,7 @@ function renderFavoriteAddForm() {
   `;
 }
 
-async function addFavorite(name, link, description, category, tags) {
+async function addFavorite(name, link, description, category, tags, priority) {
   if (!name.trim()) {
     showToast('名称不能为空');
     return;
@@ -1637,6 +1709,7 @@ async function addFavorite(name, link, description, category, tags) {
     description: description.trim(),
     category: category.trim() || '未分类',
     tags: tags,
+    priority: priority || '',
     created_at: new Date().toISOString()
   };
   favorites.unshift(tempFav);
@@ -1651,7 +1724,8 @@ async function addFavorite(name, link, description, category, tags) {
       link: link.trim(),
       description: description.trim(),
       category: category.trim() || '未分类',
-      tags: tags
+      tags: tags,
+      priority: priority || null
     });
     if (data.code === 0 && data.data && data.data.id) {
       showToast('已添加');
@@ -1659,7 +1733,6 @@ async function addFavorite(name, link, description, category, tags) {
       if (idx >= 0) favorites[idx] = data.data;
       else favorites.unshift(data.data);
       renderFavorites();
-      // 3 秒后延迟刷新，等待飞书多维表缓存刷新
       setTimeout(() => loadFavorites({ silent: true }), 3000);
     } else if (data.code === 0) {
       showToast('已添加');
@@ -1682,7 +1755,7 @@ async function addFavorite(name, link, description, category, tags) {
   }
 }
 
-async function updateFavorite(id, name, link, description, category, tags) {
+async function updateFavorite(id, name, link, description, category, tags, priority) {
   const fav = favorites.find(f => f.id === id);
   if (!fav) return;
   if (!name.trim()) {
@@ -1696,24 +1769,24 @@ async function updateFavorite(id, name, link, description, category, tags) {
   fav.description = description.trim();
   fav.category = category.trim() || '未分类';
   fav.tags = tags;
+  fav.priority = priority || '';
   updateCategories();
   editingFavoriteId = null;
   renderFavorites();
 
   showLoading();
   try {
-    const payload = {
+    const data = await invoke('update_favorite', {
       id: id,
-      "名称": name.trim(),
-      "链接": link.trim(),
-      "描述": description.trim(),
-      "分类": category.trim() || '未分类',
-      "标签": tags,
-    };
-    const data = await invoke('update_favorite', payload);
+      name: name.trim(),
+      link: link.trim(),
+      description: description.trim(),
+      category: category.trim() || '未分类',
+      tags: tags,
+      priority: priority || null
+    });
     if (data.code === 0) {
       showToast('已保存');
-      // 3 秒后延迟刷新，等待飞书多维表缓存刷新
       setTimeout(() => loadFavorites({ silent: true }), 3000);
     } else {
       Object.assign(fav, old);
@@ -1798,13 +1871,14 @@ function saveAddFavorite() {
   const desc = document.getElementById('favAddDesc')?.value || '';
   const category = document.getElementById('favAddCategory')?.value || '';
   const tagsRaw = document.getElementById('favAddTags')?.value || '';
+  const priority = document.getElementById('favAddPriority')?.value || '';
   const parsedTags = parseTags(tagsRaw);
   const validTags = filterValidTags(parsedTags);
   const invalidTags = parsedTags.filter(t => !validTags.includes(t));
   if (invalidTags.length > 0) {
     showToast('已忽略无效标签：' + invalidTags.join('、'));
   }
-  addFavorite(name, link, desc, category, validTags);
+  addFavorite(name, link, desc, category, validTags, priority);
 }
 
 function saveEditFavorite(id) {
@@ -1813,13 +1887,14 @@ function saveEditFavorite(id) {
   const desc = document.getElementById(`favEditDesc-${id}`)?.value || '';
   const category = document.getElementById(`favEditCategory-${id}`)?.value || '';
   const tagsRaw = document.getElementById(`favEditTags-${id}`)?.value || '';
+  const priority = document.getElementById(`favEditPriority-${id}`)?.value || '';
   const parsedTags = parseTags(tagsRaw);
   const validTags = filterValidTags(parsedTags);
   const invalidTags = parsedTags.filter(t => !validTags.includes(t));
   if (invalidTags.length > 0) {
     showToast('已忽略无效标签：' + invalidTags.join('、'));
   }
-  updateFavorite(id, name, link, desc, category, validTags);
+  updateFavorite(id, name, link, desc, category, validTags, priority);
 }
 
 function parseTags(raw) {

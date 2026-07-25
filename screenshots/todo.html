@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>一纸待办 - 截图</title>
+<link rel="stylesheet" href="_styles.css">
+<style>
+  body { width: 360px; height: 540px; }
+</style>
+</head>
+<body>
+<div class="window" id="window">
+  <div class="title-bar">
+    <div class="drag-region">
+      <div class="title-dropdown">
+        <span class="title">一纸待办</span>
+        <span class="title-chevron">▾</span>
+      </div>
+    </div>
+    <div class="window-controls">
+      <button class="window-btn">+</button>
+      <button class="window-btn">↻</button>
+      <button class="window-btn">⌕</button>
+      <button class="window-btn">△</button>
+      <button class="window-btn">⌄</button>
+      <button class="window-btn">–</button>
+      <button class="window-btn">✕</button>
+    </div>
+  </div>
+
+  <div class="tab-bar">
+    <button class="tab active">全部 <span class="badge">5</span></button>
+    <button class="tab">今日 <span class="badge">2</span></button>
+    <button class="tab">计划 <span class="badge">1</span></button>
+    <button class="tab">随时 <span class="badge">2</span></button>
+    <button class="tab">已批 <span class="badge">8</span></button>
+  </div>
+
+  <div class="content-area">
+    <div class="tab-panel active">
+      <div class="task-list">
+        <div class="task-item is-today">
+          <div class="checkbox checked"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <div class="task-content">
+            <div class="task-name done">██████ ████████</div>
+            <div class="task-meta">
+              <span class="priority-pill medium">中</span>
+              <span class="deadline">今天 14:00</span>
+            </div>
+          </div>
+        </div>
+        <div class="task-item is-today">
+          <div class="checkbox"></div>
+          <div class="task-content">
+            <div class="task-name">████████████████████████</div>
+            <div class="task-meta">
+              <span class="priority-pill high">高</span>
+              <span class="deadline">今天 17:30</span>
+            </div>
+          </div>
+        </div>
+        <div class="task-item is-scheduled">
+          <div class="checkbox"></div>
+          <div class="task-content">
+            <div class="task-name">██████████████</div>
+            <div class="task-meta">
+              <span class="priority-pill medium">中</span>
+              <span class="deadline">8月2日</span>
+            </div>
+          </div>
+        </div>
+        <div class="task-item">
+          <div class="checkbox"></div>
+          <div class="task-content">
+            <div class="task-name">██████████ ██████</div>
+            <div class="task-meta">
+              <span class="priority-pill low">低</span>
+              <a class="task-link">↗ 打开链接</a>
+            </div>
+          </div>
+        </div>
+        <div class="task-item">
+          <div class="checkbox"></div>
+          <div class="task-content">
+            <div class="task-name">████████████████</div>
+            <div class="task-meta">
+              <span class="priority-pill medium">中</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

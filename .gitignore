@@ -13,6 +13,15 @@ dist/
 # Local archive of old prototypes
 archive/
 
+# Build artifacts and verification screenshots (not tracked)
+*.dmg
+*.exe
+macos-artifact/
+windows-artifact/
+*verify*.png
+*_screenshot.png
+*_final.png
+
 # Temporary runtime files (lark-cli json payloads)
 tmp/
 

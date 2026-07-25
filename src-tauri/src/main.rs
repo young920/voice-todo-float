@@ -136,11 +136,14 @@ fn log(msg: &str) {
         .unwrap_or_default()
         .as_secs();
     let line = format!("[{}] {}\n", now, msg);
-    let _ = std::fs::OpenOptions::new()
+    let result = std::fs::OpenOptions::new()
         .create(true)
         .append(true)
         .open(&path)
         .and_then(|mut f| std::io::Write::write_all(&mut f, line.as_bytes()));
+    if let Err(_e) = result {
+        // silently ignore - sandbox or perm denied, app still works
+    }
 }
 
 fn show_error_dialog(title: &str, message: &str) {
@@ -640,16 +643,50 @@ fn build_command_with_executable(path: &PathBuf) -> Command {
         .and_then(|s| s.to_str())
         .unwrap_or("")
         .to_lowercase();
-    if cfg!(target_os = "windows") && (ext == "cmd" || ext == "bat") {
-        let mut cmd = Command::new("cmd.exe");
-        cmd.arg("/c").arg(path);
-        cmd
+    let mut cmd = if cfg!(target_os = "windows") && (ext == "cmd" || ext == "bat") {
+        let mut c = Command::new("cmd.exe");
+        c.arg("/c").arg(path);
+        c
     } else {
         Command::new(path)
+    };
+    // lark-cli auto-detects Agent context from HERMES_*/OPENCLAW_HOME/LARK_CHANNEL
+    // env vars and refuses to run with "not bound" if set. Strip these so the
+    // spawned lark-cli uses the bot token directly without Agent context.
+    for key in [
+        "HERMES_HOME", "HERMES_AGENT_TIMEOUT", "HERMES_AGENT_NOTIFY_INTERVAL",
+        "HERMES_REDACT_SECRETS", "HERMES_SESSION_KEY", "HERMES_EXEC_ASK",
+        "HERMES_AGENT_TIMEOUT_WARNING", "HERMES_RESTART_DRAIN_TIMEOUT",
+        "HERMES_QUIET", "HERMES_GATEWAY_TOKEN",
+        "OPENCLAW_HOME", "LARK_CHANNEL",
+    ] {
+        cmd.env_remove(key);
     }
+    cmd
 }
 
 fn find_lark_cli() -> Result<PathBuf, String> {
+    // Prefer the hermes wrapper if installed. It strips HERMES_* env vars
+    // (so lark-cli doesn't force the hermes context bind path) and chowns
+    // keychain files back to the current user if they were touched by
+    // a root session.
+    if cfg!(target_os = "macos") || cfg!(target_os = "linux") {
+        if let Ok(home) = std::env::var("HOME") {
+            let wrapper = PathBuf::from(home)
+                .join(".hermes")
+                .join("scripts")
+                .join("voice-todo-float")
+                .join("lark-cli-wrapper.sh");
+            if wrapper.exists() {
+                if let Ok(meta) = std::fs::metadata(&wrapper) {
+                    if meta.len() > 0 {
+                        return Ok(wrapper);
+                    }
+                }
+            }
+        }
+    }
+
     if let Ok(path) = which::which(lark_cli_name()) {
         if is_lark_cli_compatible(&path) {
             return Ok(path);
@@ -1612,19 +1649,6 @@ fn main() {
             let window = app
                 .get_webview_window("main")
                 .expect("main window not found");
-
-            #[cfg(target_os = "macos")]
-            {
-                use objc2::msg_send;
-                use objc2::runtime::AnyObject;
-                if let Ok(ns_window) = window.ns_window() {
-                    let ns_window = ns_window as *mut AnyObject;
-                    unsafe {
-                        let _: () = msg_send![ns_window, setMovable: true];
-                        let _: () = msg_send![ns_window, setMovableByWindowBackground: false];
-                    }
-                }
-            }
 
             let _ = window.set_focus();
             app.manage(AppState {

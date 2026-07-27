@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>一纸手记 · 待办与收藏，皆在寸纸之间</title>
+  <meta name="description" content="一纸手记：墨夜缂丝。一份待办，一份收藏，皆在寸纸之间。" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@200;300;400;500;600;700;900&family=Cinzel:wght@400;500;600&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <div class="void-bg" aria-hidden="true"></div>
+
+  <!-- ========== 1. 导航栏 ========== -->
+  <nav class="nav">
+    <div class="nav-inner">
+      <a class="nav-logo" href="#">
+        <span class="nav-logo-mark">卍</span>
+        <span class="nav-logo-text">一紙手記</span>
+      </a>
+
+      <div class="nav-links">
+        <a class="nav-link" href="#">使用 <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M2 2 L10 10 M10 2 L2 10" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg></a>
+        <a class="nav-link" href="#">源碼 <svg width="10" height="10" viewBox="0 0 16 16" fill="none"><path d="M8 1L1 4V8C1 12 4 14 8 15C12 14 15 12 15 8V4L8 1Z" stroke="currentColor" stroke-width="1.2" fill="none"/></svg></a>
+        <a class="nav-link" href="#">社群 <svg width="10" height="10" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="6" r="2.5" stroke="currentColor" stroke-width="1.2" fill="none"/><path d="M2 14C2 11 5 9 8 9C11 9 14 11 14 14" stroke="currentColor" stroke-width="1.2" fill="none"/></svg></a>
+        <a class="nav-link" href="#">下載</a>
+        <a class="nav-link" href="#">日誌</a>
+
+        <a class="nav-btn nav-btn-ghost" href="#">註冊</a>
+        <a class="nav-btn nav-btn-primary" href="#">登入 <span class="nav-arrow">→</span></a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ========== 2. Hero ========== -->
+  <section class="hero">
+    <div class="hero-inner">
+
+      <div class="hero-grid">
+        <div class="hero-left">
+          <h1 class="hero-title">
+            待辦，<em class="hero-italic">然</em>後<span class="hero-underline">執筆</span>
+          </h1>
+
+          <div class="hero-tabs">
+            <button class="hero-tab hero-tab-active">桌面端</button>
+            <button class="hero-tab">指令行</button>
+          </div>
+        </div>
+
+        <div class="hero-right">
+          <p class="hero-desc">
+            一紙手記，是為現代 AI 工作流而生的小工具。
+            支持並行任務、語音即錄、飛書直連，
+            桌面一角常顯，無彈窗、無訂閱、無追蹤。
+          </p>
+        </div>
+      </div>
+
+      <!-- ========== 3. CTA 卡片（照抄 2.5:1 / 16:10、等高、左重右轻） ========== -->
+      <div class="hero-cta-grid">
+
+        <a class="hero-cta hero-cta-main" href="https://github.com/young920/voice-todo-float" target="_blank" rel="noopener">
+          <div class="hero-cta-shine"></div>
+          <div class="hero-cta-content">
+            <div class="hero-cta-row">
+              <svg class="hero-cta-icon" width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.11.79-.25.79-.55v-1.93c-3.2.69-3.87-1.54-3.87-1.54-.52-1.32-1.27-1.68-1.27-1.68-1.04-.71.08-.69.08-.69 1.15.08 1.76 1.18 1.76 1.18 1.02 1.75 2.68 1.25 3.34.96.1-.74.4-1.25.72-1.54-2.55-.29-5.24-1.28-5.24-5.7 0-1.26.45-2.29 1.18-3.1-.12-.29-.51-1.46.11-3.04 0 0 .97-.31 3.18 1.18a11.1 11.1 0 0 1 5.79 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.58.24 2.75.12 3.04.74.81 1.18 1.84 1.18 3.1 0 4.43-2.69 5.41-5.25 5.69.41.36.78 1.06.78 2.15v3.19c0 .31.21.67.8.55A11.51 11.51 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5z"/>
+              </svg>
+              <span class="hero-cta-main-text">前往 <em class="hero-cta-italic">GitHub</em></span>
+              <span class="hero-cta-arrow">→</span>
+            </div>
+            <div class="hero-cta-sub">公開測試 · v1.0.6 · macOS</div>
+          </div>
+        </a>
+
+        <a class="hero-cta hero-cta-secondary" href="https://github.com/young920/voice-todo-float" target="_blank" rel="noopener">
+          <div class="hero-cta-content">
+            <div class="hero-cta-row">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
+              </svg>
+              <span class="hero-cta-secondary-text">星標收藏</span>
+              <span class="hero-cta-counter">★ 128</span>
+            </div>
+            <div class="hero-cta-secondary-sub">FOLLOW · young920/voice-todo-float</div>
+          </div>
+        </a>
+      </div>
+
+      <!-- ========== 4. 多张产品截图（统一基线） ========== -->
+      <div class="hero-mockup-grid">
+
+        <div class="hero-mockup-card hero-mockup-card-1">
+          <div class="hero-mockup-window">
+            <div class="hero-mockup-chrome">
+              <span class="hero-mockup-dot hero-mockup-dot-1"></span>
+              <span class="hero-mockup-dot hero-mockup-dot-2"></span>
+              <span class="hero-mockup-dot hero-mockup-dot-3"></span>
+              <span class="hero-mockup-title">一紙手記 — 待辦</span>
+            </div>
+            <div class="hero-mockup-body">
+              <img src="assets/todo.png" alt="一纸手记待办界面" />
+            </div>
+          </div>
+          <div class="hero-mockup-caption">
+            <span class="hero-mockup-tag">DESKTOP</span>
+            <span class="hero-mockup-name">桌面懸浮</span>
+            <span class="hero-mockup-desc">語音即錄 · 飛書直連</span>
+          </div>
+        </div>
+
+        <div class="hero-mockup-card hero-mockup-card-2">
+          <div class="hero-mockup-window">
+            <div class="hero-mockup-chrome">
+              <span class="hero-mockup-dot hero-mockup-dot-1"></span>
+              <span class="hero-mockup-dot hero-mockup-dot-2"></span>
+              <span class="hero-mockup-dot hero-mockup-dot-3"></span>
+              <span class="hero-mockup-title">一紙手記 — 錦囊</span>
+            </div>
+            <div class="hero-mockup-body">
+              <img src="assets/jinnang.png" alt="一纸手记锦囊界面" />
+            </div>
+          </div>
+          <div class="hero-mockup-caption">
+            <span class="hero-mockup-tag">COLLECTION</span>
+            <span class="hero-mockup-name">靈感錦囊</span>
+            <span class="hero-mockup-desc">連結收藏 · 隨手摘錄</span>
+          </div>
+        </div>
+
+        <div class="hero-mockup-card hero-mockup-card-3">
+          <div class="hero-mockup-window">
+            <div class="hero-mockup-chrome">
+              <span class="hero-mockup-dot hero-mockup-dot-1"></span>
+              <span class="hero-mockup-dot hero-mockup-dot-2"></span>
+              <span class="hero-mockup-dot hero-mockup-dot-3"></span>
+              <span class="hero-mockup-title">CLI — Terminal</span>
+            </div>
+            <div class="hero-mockup-body hero-mockup-cli">
+              <div class="cli-line"><span class="cli-prompt">›</span><span class="cli-cmd"> TODOList 明天 10 點回電話</span></div>
+              <div class="cli-output">→ 已建立 · 明日 10:00</div>
+              <div class="cli-output">→ 已同步至飛書 Base</div>
+              <div class="cli-divider"></div>
+              <div class="cli-line"><span class="cli-prompt">›</span><span class="cli-cmd"> TODOList 給貓買罐頭</span></div>
+              <div class="cli-output">→ 已建立 · 待辦</div>
+              <div class="cli-divider"></div>
+              <div class="cli-line"><span class="cli-prompt">›</span><span class="cli-cmd"> TODOShow</span></div>
+              <div class="cli-output">→ 今日 2 · 計劃 1 · 隨時 2</div>
+              <div class="cli-line cli-cursor">█</div>
+            </div>
+          </div>
+          <div class="hero-mockup-caption">
+            <span class="hero-mockup-tag">VOICE</span>
+            <span class="hero-mockup-name">語音即錄</span>
+            <span class="hero-mockup-desc">一句話建任務</span>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </section>
+
+  <script src="main.js"></script>
+</body>
+</html>

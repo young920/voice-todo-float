@@ -328,51 +328,50 @@ a { color: inherit; text-decoration: none; }
   flex-shrink: 0;
 }
 .hero-sync-label {
-  color: rgba(26, 23, 21, 0.85);
+  color: rgba(244, 236, 216, 0.85);          /* v19：深底 hero — 米色 85% */
   font-weight: 500;
   line-height: 1;
 }
 .hero-sync-arrow {
-  color: rgba(26, 23, 21, 0.4);
+  color: rgba(244, 236, 216, 0.4);           /* v19：深底 hero — 米色 40% */
   flex-shrink: 0;
 }
 
-/* 米白卡片内文字反转为深色（dark on light） */
+/* v19：hero 卡片底色深黑 — 文字翻米色，层级用透明度 */
 .hero-card .hero-eyebrow {
-  color: rgba(26, 23, 21, 0.7);
-  border-color: rgba(26, 23, 21, 0.15);
-  background: rgba(26, 23, 21, 0.04);
+  color: rgba(244, 236, 216, 0.65);          /* v19：米色 65% — 顶部 pill (与 hint 同级) */
+  border-color: rgba(244, 236, 216, 0.18);
+  background: rgba(244, 236, 216, 0.04);
   backdrop-filter: none;
-  text-shadow: 0 0 8px rgba(245, 240, 232, 0.7);
 }
 .hero-card .hero-eyebrow-pulse::before {
-  background: #16a34a;
-  box-shadow: 0 0 8px rgba(22, 163, 74, 0.7);
+  background: #4ade80;
+  box-shadow: 0 0 8px rgba(74, 222, 128, 0.7);
 }
 .hero-card .hero-eyebrow-pulse-ring {
-  background: rgba(22, 163, 74, 0.6);
+  background: rgba(74, 222, 128, 0.6);
 }
 .hero-card .hero-title {
-  color: #1a1715;
+  color: var(--paper);                       /* 米色满 — 主标题最亮 */
 }
 .hero-card .hero-underline {
-  background: linear-gradient(180deg, transparent 70%, rgba(197, 63, 63, 0.45) 70%, rgba(197, 63, 63, 0.2) 95%, transparent 100%);
+  background: linear-gradient(180deg, transparent 70%, rgba(197, 63, 63, 0.55) 70%, rgba(197, 63, 63, 0.25) 95%, transparent 100%);
 }
 .hero-card .hero-underline::after {
   background: radial-gradient(ellipse 70% 100% at 50% 60%, rgba(197, 63, 63, 0.95) 0%, rgba(197, 63, 63, 0.7) 40%, rgba(197, 63, 63, 0.3) 70%, transparent 100%);
 }
 .hero-card .hero-desc {
-  color: rgba(26, 23, 21, 0.65);
+  color: rgba(244, 236, 216, 0.75);           /* v19：米色 75% — 副标题 (100/75/65 三级) */
 }
 .hero-card .hero-hint {
-  color: rgba(26, 23, 21, 0.55);
+  color: rgba(244, 236, 216, 0.65);           /* v19：米色 65% — 三级阶梯清晰 */
 }
 .hero-card .hero-hint-key {
-  background: rgba(26, 23, 21, 0.08);
-  border-color: rgba(26, 23, 21, 0.18);
-  color: rgba(26, 23, 21, 0.85);
+  background: rgba(244, 236, 216, 0.08);
+  border-color: rgba(244, 236, 216, 0.18);
+  color: rgba(244, 236, 216, 0.85);
 }
-/* 卡片内 CTA 主按钮 — 品牌红 #C53F3F（呼应主题色，比纯黑更醒目） */
+/* 卡片内 CTA 主按钮 — 品牌红 #C53F3F（深底 hero 上红色最醒目） */
 .hero-card .btn-primary {
   background: #c53f3f;
   color: #ffffff;
@@ -392,8 +391,8 @@ a { color: inherit; text-decoration: none; }
   font-size: 0.78rem;
   font-weight: 500;
   letter-spacing: 0.02em;
-  color: rgba(26, 23, 21, 0.6);
-  border: 1px solid rgba(26, 23, 21, 0.12);
+  color: rgba(244, 236, 216, 0.65);          /* v19：深底 hero — 米色 65% */
+  border: 1px solid rgba(244, 236, 216, 0.18);
   padding: 0.3rem 0.8rem;
   border-radius: 999px;
   margin-bottom: var(--gap-sm);          /* 12px — eyebrow → H1 */
@@ -595,16 +594,16 @@ a { color: inherit; text-decoration: none; }
 .btn-cta-primary:active {
   transform: translateY(0);
 }
-/* 次按钮 — GitHub（描边 + 深色文字） */
-.btn-cta-secondary {
-  background: rgba(26, 23, 21, 0.04);
-  color: #1a1715;                          /* 加深对比，不用 0.85 透明 */
-  border-color: rgba(26, 23, 21, 0.25);    /* 加深边框 0.15→0.25 */
+/* v19：hero 内 GitHub 次按钮 — 深底翻米色（描边 + 米色文字） */
+.hero-card .btn-cta-secondary {
+  background: rgba(244, 236, 216, 0.04);
+  color: rgba(244, 236, 216, 0.85);
+  border-color: rgba(244, 236, 216, 0.25);
 }
-.btn-cta-secondary:hover {
-  background: rgba(26, 23, 21, 0.08);
-  border-color: rgba(26, 23, 21, 0.4);
-  color: #0a0908;
+.hero-card .btn-cta-secondary:hover {
+  background: rgba(244, 236, 216, 0.08);
+  border-color: rgba(244, 236, 216, 0.4);
+  color: var(--paper);
   transform: translateY(-1px);
 }
 .btn-cta-icon {

@@ -691,6 +691,25 @@ a { color: inherit; text-decoration: none; }
   font-size: 0.75rem;
 }
 
+/* 平台支持 — 真实能力标签 */
+.hero-platforms {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 0.6rem;
+}
+.hero-platform-pill {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.02em;
+  color: rgba(244, 236, 216, 0.65);
+  padding: 0.28rem 0.7rem;
+  border: 1px solid rgba(244, 236, 216, 0.15);
+  border-radius: 999px;
+  background: rgba(244, 236, 216, 0.02);
+}
+
 /* Stage — 产品演示容器 (Widget + CLI 横排，全宽居中) */
 .hero-stage {
   display: grid;

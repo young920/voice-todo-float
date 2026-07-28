@@ -1033,7 +1033,7 @@ a { color: inherit; text-decoration: none; }
   position: absolute;
   top: 0; left: 0; right: 0;
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(184, 149, 63, 0.3), transparent);
+  background: linear-gradient(90deg, transparent, rgba(157, 41, 51, 0.4), transparent);
   pointer-events: none;
 }
 
@@ -1066,26 +1066,26 @@ a { color: inherit; text-decoration: none; }
   padding: 4.2rem 3.6rem 4.4rem;
 }
 
-/* ====== 四条发光描边 ====== */
+/* ====== 四条发光描边 — 朱红系 ====== */
 .glow-border {
   position: absolute;
   z-index: 1;
   pointer-events: none;
-  background: var(--glow-color, #c9a84c);
+  background: var(--glow-color, #9d2933);
 }
 .glow-border-top {
   top: 0; left: 0; right: 0;
   height: 2px;
   background: linear-gradient(90deg,
     transparent 0%,
-    rgba(201, 168, 76, 0) 8%,
-    rgba(201, 168, 76, 0.5) 30%,
-    rgba(244, 220, 150, 1) 50%,
-    rgba(201, 168, 76, 0.5) 70%,
-    rgba(201, 168, 76, 0) 92%,
+    rgba(157, 41, 51, 0) 8%,
+    rgba(157, 41, 51, 0.5) 30%,
+    rgba(255, 130, 110, 1) 50%,
+    rgba(157, 41, 51, 0.5) 70%,
+    rgba(157, 41, 51, 0) 92%,
     transparent 100%);
   background-size: 200% 100%;
-  box-shadow: 0 0 12px rgba(201, 168, 76, 0.6), 0 0 24px rgba(201, 168, 76, 0.25);
+  box-shadow: 0 0 12px rgba(232, 90, 80, 0.55), 0 0 24px rgba(232, 90, 80, 0.22);
   animation: glow-flow-x 4.5s ease-in-out infinite;
 }
 .glow-border-bottom {
@@ -1093,14 +1093,14 @@ a { color: inherit; text-decoration: none; }
   height: 2px;
   background: linear-gradient(90deg,
     transparent 0%,
-    rgba(201, 168, 76, 0) 8%,
-    rgba(201, 168, 76, 0.5) 30%,
-    rgba(244, 220, 150, 1) 50%,
-    rgba(201, 168, 76, 0.5) 70%,
-    rgba(201, 168, 76, 0) 92%,
+    rgba(157, 41, 51, 0) 8%,
+    rgba(157, 41, 51, 0.5) 30%,
+    rgba(255, 130, 110, 1) 50%,
+    rgba(157, 41, 51, 0.5) 70%,
+    rgba(157, 41, 51, 0) 92%,
     transparent 100%);
   background-size: 200% 100%;
-  box-shadow: 0 0 12px rgba(201, 168, 76, 0.6), 0 0 24px rgba(201, 168, 76, 0.25);
+  box-shadow: 0 0 12px rgba(232, 90, 80, 0.55), 0 0 24px rgba(232, 90, 80, 0.22);
   animation: glow-flow-x 4.5s ease-in-out infinite reverse;
 }
 .glow-border-left {
@@ -1108,14 +1108,14 @@ a { color: inherit; text-decoration: none; }
   width: 2px;
   background: linear-gradient(180deg,
     transparent 0%,
-    rgba(201, 168, 76, 0) 8%,
-    rgba(201, 168, 76, 0.5) 30%,
-    rgba(244, 220, 150, 1) 50%,
-    rgba(201, 168, 76, 0.5) 70%,
-    rgba(201, 168, 76, 0) 92%,
+    rgba(157, 41, 51, 0) 8%,
+    rgba(157, 41, 51, 0.5) 30%,
+    rgba(255, 130, 110, 1) 50%,
+    rgba(157, 41, 51, 0.5) 70%,
+    rgba(157, 41, 51, 0) 92%,
     transparent 100%);
   background-size: 100% 200%;
-  box-shadow: 0 0 12px rgba(201, 168, 76, 0.6), 0 0 24px rgba(201, 168, 76, 0.25);
+  box-shadow: 0 0 12px rgba(232, 90, 80, 0.55), 0 0 24px rgba(232, 90, 80, 0.22);
   animation: glow-flow-y 4.5s ease-in-out infinite;
 }
 .glow-border-right {
@@ -1123,14 +1123,14 @@ a { color: inherit; text-decoration: none; }
   width: 2px;
   background: linear-gradient(180deg,
     transparent 0%,
-    rgba(201, 168, 76, 0) 8%,
-    rgba(201, 168, 76, 0.5) 30%,
-    rgba(244, 220, 150, 1) 50%,
-    rgba(201, 168, 76, 0.5) 70%,
-    rgba(201, 168, 76, 0) 92%,
+    rgba(157, 41, 51, 0) 8%,
+    rgba(157, 41, 51, 0.5) 30%,
+    rgba(255, 130, 110, 1) 50%,
+    rgba(157, 41, 51, 0.5) 70%,
+    rgba(157, 41, 51, 0) 92%,
     transparent 100%);
   background-size: 100% 200%;
-  box-shadow: 0 0 12px rgba(201, 168, 76, 0.6), 0 0 24px rgba(201, 168, 76, 0.25);
+  box-shadow: 0 0 12px rgba(232, 90, 80, 0.55), 0 0 24px rgba(232, 90, 80, 0.22);
   animation: glow-flow-y 4.5s ease-in-out infinite reverse;
 }
 
@@ -1289,7 +1289,7 @@ a { color: inherit; text-decoration: none; }
 }
 
 .chat-bubble-user .chat-tag { color: var(--cinnabar-soft); }
-.chat-bubble-ai .chat-tag { color: var(--gold-deep); }
+.chat-bubble-ai .chat-tag { color: var(--cinnabar-soft); }
 
 .chat-bubble p {
   font-size: 0.92rem;

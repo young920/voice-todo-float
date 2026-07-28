@@ -2517,35 +2517,37 @@ a { color: inherit; text-decoration: none; }
 
 /* ============================================================
    HERO 产品预览 widget 内部样式（外层 grid 定位见顶部 .hero-widget）
+   v20：向原生 macOS 靠拢 — 圆角 16→10、纯白底、字号阶梯、左色条
    ============================================================ */
 .hero-widget-chrome {
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  padding: 0.45rem 0.8rem;
-  background: rgba(10, 9, 8, 0.06);
+  padding: 0.32rem 0.7rem;                /* 0.45→0.32 压缩标题栏 */
+  background: #f5f5f7;                    /* macOS 标准 traffic-light 区底色 */
   border-bottom: 1px solid rgba(10, 9, 8, 0.08);
+  border-radius: 10px 10px 0 0;           /* 顶部圆角随父元素 */
 }
 .hero-widget-dot {
-  width: 7px;
-  height: 7px;
+  width: 9px;                              /* 7→9 更像原生 traffic-light */
+  height: 9px;
   border-radius: 50%;
-  background: rgba(10, 9, 8, 0.2);
+  background: #d4d4d8;
 }
 .hero-widget-title {
-  margin-left: 0.35rem;
+  margin-left: 0.4rem;
   font-family: var(--font-mono);
-  font-size: 0.68rem;
-  color: rgba(10, 9, 8, 0.55);
+  font-size: 0.7rem;                        /* 0.68→0.7 略增 */
+  color: #86868b;                           /* macOS 标准次级文字灰 */
   letter-spacing: 0.02em;
   flex: 1;
 }
 .hero-widget-live {
   font-family: var(--font-mono);
-  font-size: 0.62rem;
+  font-size: 0.6rem;                        /* 0.62→0.6 */
   letter-spacing: 0.12em;
-  color: #c4323d;
-  font-weight: 700;
+  color: #ff3b30;                           /* #c4323d→#ff3b30 macOS 系统红 */
+  font-weight: 600;
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
@@ -2554,36 +2556,37 @@ a { color: inherit; text-decoration: none; }
   width: 5px;
   height: 5px;
   border-radius: 50%;
-  background: #c4323d;
-  box-shadow: 0 0 0 0 rgba(196, 50, 61, 0.7);
+  background: #ff3b30;
+  box-shadow: 0 0 0 0 rgba(255, 59, 48, 0.7);
   animation: widget-pulse 2s infinite;
 }
 @keyframes widget-pulse {
-  0% { box-shadow: 0 0 0 0 rgba(196, 50, 61, 0.6); }
-  70% { box-shadow: 0 0 0 6px rgba(196, 50, 61, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(196, 50, 61, 0); }
+  0% { box-shadow: 0 0 0 0 rgba(255, 59, 48, 0.6); }
+  70% { box-shadow: 0 0 0 6px rgba(255, 59, 48, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 59, 48, 0); }
 }
 .hero-widget-body {
-  padding: 0.8rem 1rem 1rem;
+  padding: 0.7rem 0.9rem 0.9rem;            /* 0.8/1/1 → 0.7/0.9/0.9 收紧 */
+  background: #ffffff;                      /* 渐变灰白 → 纯白 */
 }
 .hero-widget-meta {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  margin-bottom: 0.8rem;
-  padding-bottom: 0.55rem;
-  border-bottom: 1px dashed rgba(10, 9, 8, 0.12);
+  margin-bottom: 0.55rem;                   /* 0.8→0.55 紧凑 */
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #f5f5f7;        /* dashed → solid，更克制 */
 }
 .hero-widget-date {
   font-family: var(--font-serif);
-  font-size: 0.92rem;
+  font-size: 0.95rem;                       /* 0.92→0.95 */
   font-weight: 700;
-  color: var(--ink);
+  color: #1d1d1f;                           /* 纯黑非灰 */
 }
 .hero-widget-count {
   font-family: var(--font-mono);
-  font-size: 0.66rem;
-  color: rgba(10, 9, 8, 0.55);
+  font-size: 0.62rem;                       /* 0.66→0.62 */
+  color: #86868b;
   letter-spacing: 0.04em;
 }
 .hero-widget-list {
@@ -2592,49 +2595,53 @@ a { color: inherit; text-decoration: none; }
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: 0.18rem;                             /* 0.35→0.18 行间紧凑 */
 }
 .hero-widget-item {
   display: flex;
   align-items: center;
   gap: 0.55rem;
-  padding: 0.28rem 0.5rem;
-  background: rgba(255, 255, 255, 0.55);
-  border: 1px solid rgba(10, 9, 8, 0.06);
-  border-radius: 3px;
-  font-size: 0.82rem;
-  color: var(--ink);
+  padding: 0.32rem 0.5rem;                  /* 0.28/0.5 → 0.32/0.5 微调 */
+  background: transparent;                  /* 浅白 → 透明（让 body 白底穿透）*/
+  border: none;                             /* 1px → 无边框 */
+  border-radius: 4px;
+  font-size: 0.85rem;                       /* 0.82→0.85 */
+  color: #1d1d1f;                           /* 纯黑 */
+  font-weight: 500;                         /* 显式 Medium */
   transition: transform 0.2s ease;
+  position: relative;
 }
 .hero-widget-item:hover { transform: translateX(2px); }
 .hero-widget-check {
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  border: 1.5px solid rgba(10, 9, 8, 0.25);
+  border: 1.5px solid #d4d4d8;             /* rgba 深 → #d4d4d8 浅灰 */
   display: inline-flex;
   align-items: center;
   justify-content: center;
   font-size: 0.65rem;
-  color: rgba(10, 9, 8, 0.3);
+  color: transparent;
   flex-shrink: 0;
 }
 .hero-widget-item-done .hero-widget-check {
-  background: var(--cinnabar);
-  border-color: var(--cinnabar);
-  color: #fbf5e6;
+  background: #c53f3f;                       /* var(--cinnabar) → #c53f3f 品牌红 */
+  border-color: #c53f3f;
+  color: #fff;
 }
 .hero-widget-item-done .hero-widget-text {
   text-decoration: line-through;
-  color: rgba(10, 9, 8, 0.4);
+  color: #86868b;
 }
+/* v20：激活项改左侧色条（取代全边框"网页表单"感） */
 .hero-widget-item-now {
-  background: rgba(196, 50, 61, 0.08);
-  border-color: var(--cinnabar);
+  background: rgba(197, 63, 63, 0.06);      /* 极淡红底 */
+  border-left: 2px solid #c53f3f;            /* 左色条 */
+  padding-left: 0.6rem;                      /* 0.5 + 2px border */
 }
 .hero-widget-item-now .hero-widget-check {
-  border-color: var(--cinnabar);
-  color: var(--cinnabar);
+  border-color: #c53f3f;
+  color: #c53f3f;
   animation: widget-blink 1.4s infinite;
 }
 @keyframes widget-blink {
@@ -2743,14 +2750,14 @@ a { color: inherit; text-decoration: none; }
    板块 2.5 — 产品预览 Widget + CLI 双视图（外层无 grid 定位，宽度由 .hero-stage 控制）
    ============================================================ */
 .hero-widget {
-  /* 外层视觉 — 主产品，加重投影 */
-  border-radius: 14px;
-  background: linear-gradient(180deg, #ffffff 0%, #f9f5ec 100%);
-  border: 1px solid rgba(28, 22, 14, 0.12);
+  /* 外层视觉 — v20：macOS 原生风格 — 纯白底、10px 圆角、精细投影 */
+  border-radius: 10px;                                    /* 14→10 更像原生 */
+  background: #ffffff;                                    /* 渐变 → 纯白 */
+  border: 1px solid rgba(0, 0, 0, 0.08);                  /* 浅灰描边 */
   box-shadow:
-    0 2px 4px rgba(26, 23, 21, 0.08),
-    0 24px 48px -12px rgba(26, 23, 21, 0.18),
-    0 1px 0 rgba(255, 255, 255, 0.8) inset;       /* 顶部高光，更立体 */
+    0 1px 2px rgba(0, 0, 0, 0.04),
+    0 8px 24px -4px rgba(0, 0, 0, 0.25),                 /* 加强投影 */
+    0 24px 48px -12px rgba(0, 0, 0, 0.18);
   overflow: hidden;
 }
 .hero-cli {

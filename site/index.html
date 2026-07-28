@@ -27,7 +27,6 @@
         <a class="nav-link" href="#">源碼 <svg width="10" height="10" viewBox="0 0 16 16" fill="none"><path d="M8 1L1 4V8C1 12 4 14 8 15C12 14 15 12 15 8V4L8 1Z" stroke="currentColor" stroke-width="1.2" fill="none"/></svg></a>
         <a class="nav-link" href="#">社群 <svg width="10" height="10" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="6" r="2.5" stroke="currentColor" stroke-width="1.2" fill="none"/><path d="M2 14C2 11 5 9 8 9C11 9 14 11 14 14" stroke="currentColor" stroke-width="1.2" fill="none"/></svg></a>
         <a class="nav-link" href="#">下載</a>
-        <a class="nav-link" href="#">日誌</a>
 
         <a class="nav-btn nav-btn-ghost" href="#">註冊</a>
         <a class="nav-btn nav-btn-primary" href="#">登入 <span class="nav-arrow">→</span></a>
@@ -35,135 +34,734 @@
     </div>
   </nav>
 
-  <!-- ========== 2. Hero ========== -->
+  <!-- ========== 2. Hero — 21st.dev dithering-card ========== -->
+  <!-- 整个 hero section 是一个 dithering-card：dither shader 铺满 + 内容居中堆叠 + widget/cli 在内 -->
   <section class="hero">
-    <div class="hero-inner">
 
-      <div class="hero-grid">
-        <div class="hero-left">
-          <h1 class="hero-title">
-            待辦，<em class="hero-italic">然</em>後<span class="hero-underline">執筆</span>
-          </h1>
+    <div class="hero-card">
 
-          <div class="hero-tabs">
-            <button class="hero-tab hero-tab-active">桌面端</button>
-            <button class="hero-tab">指令行</button>
-          </div>
+      <!-- Dithering warp shader 背景 — 铺满整个 hero-card -->
+      <canvas class="hero-dither-bg" aria-hidden="true"></canvas>
+
+      <div class="hero-stage">
+
+        <!-- 顶部小标 — pill 边框 + 呼吸绿点 -->
+        <div class="hero-eyebrow">
+          <span class="hero-eyebrow-pulse"><span class="hero-eyebrow-pulse-ring"></span></span>
+          v1.0.6 · 公開測試 · macOS
         </div>
 
-        <div class="hero-right">
-          <p class="hero-desc">
-            一紙手記，是為現代 AI 工作流而生的小工具。
-            支持並行任務、語音即錄、飛書直連，
-            桌面一角常顯，無彈窗、無訂閱、無追蹤。
-          </p>
+        <!-- H1 一行大字 — serif font-medium tracking-tight -->
+        <h1 class="hero-title">
+          待辦，<span class="hero-underline">然後執筆</span>。
+        </h1>
+
+        <!-- Subtext 居中 -->
+        <p class="hero-desc">
+          為現代 AI 工作流而生的桌面浮窗。<br>
+          語音即錄 · 飛書直連 · 始終在側。
+        </p>
+
+        <!-- CTA — 双按钮：主下载 macOS + 次 GitHub -->
+        <div class="hero-cta-row">
+          <a class="btn btn-cta btn-cta-primary" href="#" data-action="download">
+            <svg class="btn-cta-icon" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+              <path d="M8.5 1a.5.5 0 0 0-1 0v8.793L5.354 7.646a.5.5 0 1 0-.708.708l3 3a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 9.793V1zM3 13.5a.5.5 0 0 0 .5.5h9a.5.5 0 0 0 0-1h-9a.5.5 0 0 0-.5.5z"/>
+            </svg>
+            <span class="btn-cta-label">下載 macOS</span>
+            <span class="btn-cta-meta">8.6 MB · v1.0.6</span>
+          </a>
+          <a class="btn btn-cta btn-cta-secondary" href="https://github.com/young920/voice-todo-float" target="_blank" rel="noopener">
+            <svg class="btn-cta-icon" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+              <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/>
+            </svg>
+            <span class="btn-cta-label">GitHub</span>
+            <span class="btn-cta-arrow">↗</span>
+          </a>
         </div>
+
+        <!-- 底部小提示 -->
+        <div class="hero-hint">
+          <span class="hero-hint-key">⌘</span> + <span class="hero-hint-key">⇧</span> + <span class="hero-hint-key">T</span>
+          &nbsp;召喚浮窗 · 無彈窗 · 無訂閱
+        </div>
+
       </div>
 
-      <!-- ========== 3. CTA 卡片（照抄 2.5:1 / 16:10、等高、左重右轻） ========== -->
-      <div class="hero-cta-grid">
+      <!-- 产品演示 — Widget + CLI 横排 + 中间连接元素（同步指示） -->
+      <div class="hero-stage-demo">
 
-        <a class="hero-cta hero-cta-main" href="https://github.com/young920/voice-todo-float" target="_blank" rel="noopener">
-          <div class="hero-cta-shine"></div>
-          <div class="hero-cta-content">
-            <div class="hero-cta-row">
-              <svg class="hero-cta-icon" width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.11.79-.25.79-.55v-1.93c-3.2.69-3.87-1.54-3.87-1.54-.52-1.32-1.27-1.68-1.27-1.68-1.04-.71.08-.69.08-.69 1.15.08 1.76 1.18 1.76 1.18 1.02 1.75 2.68 1.25 3.34.96.1-.74.4-1.25.72-1.54-2.55-.29-5.24-1.28-5.24-5.7 0-1.26.45-2.29 1.18-3.1-.12-.29-.51-1.46.11-3.04 0 0 .97-.31 3.18 1.18a11.1 11.1 0 0 1 5.79 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.58.24 2.75.12 3.04.74.81 1.18 1.84 1.18 3.1 0 4.43-2.69 5.41-5.25 5.69.41.36.78 1.06.78 2.15v3.19c0 .31.21.67.8.55A11.51 11.51 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5z"/>
-              </svg>
-              <span class="hero-cta-main-text">前往 <em class="hero-cta-italic">GitHub</em></span>
-              <span class="hero-cta-arrow">→</span>
+          <div class="hero-widget" aria-hidden="true">
+            <div class="hero-widget-chrome">
+              <span class="hero-widget-dot"></span>
+              <span class="hero-widget-dot"></span>
+              <span class="hero-widget-dot"></span>
+              <span class="hero-widget-title">一紙手記 · 桌面浮窗</span>
+              <span class="hero-widget-live"><span class="hero-widget-pulse"></span>LIVE</span>
             </div>
-            <div class="hero-cta-sub">公開測試 · v1.0.6 · macOS</div>
-          </div>
-        </a>
-
-        <a class="hero-cta hero-cta-secondary" href="https://github.com/young920/voice-todo-float" target="_blank" rel="noopener">
-          <div class="hero-cta-content">
-            <div class="hero-cta-row">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
-              </svg>
-              <span class="hero-cta-secondary-text">星標收藏</span>
-              <span class="hero-cta-counter">★ 128</span>
-            </div>
-            <div class="hero-cta-secondary-sub">FOLLOW · young920/voice-todo-float</div>
-          </div>
-        </a>
-      </div>
-
-      <!-- ========== 4. 多张产品截图（统一基线） ========== -->
-      <div class="hero-mockup-grid">
-
-        <div class="hero-mockup-card hero-mockup-card-1">
-          <div class="hero-mockup-window">
-            <div class="hero-mockup-chrome">
-              <span class="hero-mockup-dot hero-mockup-dot-1"></span>
-              <span class="hero-mockup-dot hero-mockup-dot-2"></span>
-              <span class="hero-mockup-dot hero-mockup-dot-3"></span>
-              <span class="hero-mockup-title">一紙手記 — 待辦</span>
-            </div>
-            <div class="hero-mockup-body">
-              <img src="assets/todo.png" alt="一纸手记待办界面" />
-            </div>
-          </div>
-          <div class="hero-mockup-caption">
-            <span class="hero-mockup-tag">DESKTOP</span>
-            <span class="hero-mockup-name">桌面懸浮</span>
-            <span class="hero-mockup-desc">語音即錄 · 飛書直連</span>
-          </div>
-        </div>
-
-        <div class="hero-mockup-card hero-mockup-card-2">
-          <div class="hero-mockup-window">
-            <div class="hero-mockup-chrome">
-              <span class="hero-mockup-dot hero-mockup-dot-1"></span>
-              <span class="hero-mockup-dot hero-mockup-dot-2"></span>
-              <span class="hero-mockup-dot hero-mockup-dot-3"></span>
-              <span class="hero-mockup-title">一紙手記 — 錦囊</span>
-            </div>
-            <div class="hero-mockup-body">
-              <img src="assets/jinnang.png" alt="一纸手记锦囊界面" />
+            <div class="hero-widget-body">
+              <div class="hero-widget-meta">
+                <span class="hero-widget-date">今天 · 8月3日</span>
+                <span class="hero-widget-count">4 任務 · 1 錄音中</span>
+              </div>
+              <ul class="hero-widget-list">
+                <li class="hero-widget-item hero-widget-item-done">
+                  <span class="hero-widget-check">✓</span>
+                  <span class="hero-widget-text">回 N 君電話</span>
+                  <span class="hero-widget-time">10:00</span>
+                </li>
+                <li class="hero-widget-item hero-widget-item-voice">
+                  <span class="hero-widget-check hero-widget-mic">
+                    <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                      <path d="M5 3a3 3 0 1 1 6 0v5a3 3 0 1 1-6 0V3zM3 8a5 5 0 0 0 10 0h1a6 6 0 0 1-5 5.917V16h-2v-2.083A6 6 0 0 1 2 8h1z"/>
+                    </svg>
+                    <span class="hero-widget-mic-bars"><span></span><span></span><span></span><span></span></span>
+                  </span>
+                  <span class="hero-widget-text">提交 Q3 報告</span>
+                  <span class="hero-widget-tag hero-widget-tag-voice">錄音中</span>
+                </li>
+                <li class="hero-widget-item hero-widget-item-now">
+                  <span class="hero-widget-check">▍</span>
+                  <span class="hero-widget-text">跟進 N 君反饋</span>
+                  <span class="hero-widget-tag">NOW</span>
+                </li>
+                <li class="hero-widget-item">
+                  <span class="hero-widget-check"></span>
+                  <span class="hero-widget-text">買貓罐頭</span>
+                  <span class="hero-widget-time">隨時</span>
+                </li>
+              </ul>
             </div>
           </div>
-          <div class="hero-mockup-caption">
-            <span class="hero-mockup-tag">COLLECTION</span>
-            <span class="hero-mockup-name">靈感錦囊</span>
-            <span class="hero-mockup-desc">連結收藏 · 隨手摘錄</span>
-          </div>
-        </div>
 
-        <div class="hero-mockup-card hero-mockup-card-3">
-          <div class="hero-mockup-window">
-            <div class="hero-mockup-chrome">
-              <span class="hero-mockup-dot hero-mockup-dot-1"></span>
-              <span class="hero-mockup-dot hero-mockup-dot-2"></span>
-              <span class="hero-mockup-dot hero-mockup-dot-3"></span>
-              <span class="hero-mockup-title">CLI — Terminal</span>
+<!-- 中间连接元素：横排"1 浮窗輸入 → 2 飛書同步"指示带 -->
+          <div class="hero-sync-flow" aria-hidden="true">
+            <span class="hero-sync-step">
+              <span class="hero-sync-num">1</span>
+              <span class="hero-sync-label">浮窗輸入</span>
+            </span>
+            <svg class="hero-sync-arrow" width="28" height="14" viewBox="0 0 28 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M2 7 L24 7 M18 2 L24 7 L18 12"/>
+            </svg>
+            <span class="hero-sync-step">
+              <span class="hero-sync-num">2</span>
+              <span class="hero-sync-label">飛書同步</span>
+            </span>
+          </div>
+
+          <div class="hero-cli" aria-hidden="true">
+            <div class="hero-cli-chrome">
+              <span class="hero-widget-dot"></span>
+              <span class="hero-widget-dot"></span>
+              <span class="hero-widget-dot"></span>
+              <span class="hero-widget-title">飛書多維表格 · todo</span>
+              <span class="hero-widget-live"><span class="hero-widget-pulse"></span>SYNC</span>
             </div>
-            <div class="hero-mockup-body hero-mockup-cli">
-              <div class="cli-line"><span class="cli-prompt">›</span><span class="cli-cmd"> TODOList 明天 10 點回電話</span></div>
+            <div class="hero-cli-body">
+              <div class="cli-line"><span class="cli-prompt">›</span><span class="cli-cmd"> TODOList 明天 10 點回 N 君電話</span></div>
               <div class="cli-output">→ 已建立 · 明日 10:00</div>
               <div class="cli-output">→ 已同步至飛書 Base</div>
-              <div class="cli-divider"></div>
               <div class="cli-line"><span class="cli-prompt">›</span><span class="cli-cmd"> TODOList 給貓買罐頭</span></div>
-              <div class="cli-output">→ 已建立 · 待辦</div>
-              <div class="cli-divider"></div>
+              <div class="cli-output">→ 已建立 · 隨時</div>
               <div class="cli-line"><span class="cli-prompt">›</span><span class="cli-cmd"> TODOShow</span></div>
               <div class="cli-output">→ 今日 2 · 計劃 1 · 隨時 2</div>
               <div class="cli-line cli-cursor">█</div>
             </div>
           </div>
-          <div class="hero-mockup-caption">
-            <span class="hero-mockup-tag">VOICE</span>
-            <span class="hero-mockup-name">語音即錄</span>
-            <span class="hero-mockup-desc">一句話建任務</span>
-          </div>
+
         </div>
 
       </div>
-
     </div>
+
   </section>
+
+      <!-- ========== 3.5 功能网格（gitbutler 6 卡结构） ========== -->
+      <section class="features">
+        <div class="features-inner">
+          <header class="features-head">
+            <h2 class="features-title">
+              <em class="features-italic">Six</em> Things
+            </h2>
+            <p class="features-subtitle">一紙手記，所長不過六事</p>
+          </header>
+
+          <div class="features-grid">
+
+            <article class="feature-card">
+              <div class="feature-icon" aria-hidden="true">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="4" width="18" height="14" rx="2"/>
+                  <path d="M8 21h8M12 18v3"/>
+                </svg>
+              </div>
+              <h3 class="feature-name">桌面常顯</h3>
+              <p class="feature-desc">無彈窗、無 dock 遮擋。置于屏幕一角，視綫所及，隨手即記。</p>
+            </article>
+
+            <article class="feature-card">
+              <div class="feature-icon" aria-hidden="true">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="9" y="3" width="6" height="12" rx="3"/>
+                  <path d="M5 11a7 7 0 0 0 14 0M12 18v3M8 21h8"/>
+                </svg>
+              </div>
+              <h3 class="feature-name">語音即錄</h3>
+              <p class="feature-desc">一句「TODOList 明天十點回電話」即成任務。鍵盤懶得敲時的備忘。</p>
+            </article>
+
+            <article class="feature-card">
+              <div class="feature-icon" aria-hidden="true">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
+                </svg>
+              </div>
+              <h3 class="feature-name">飛書直連</h3>
+              <p class="feature-desc">任務直達飛書 Base。多端可見，手機、網頁、桌面——一處記，處處查。</p>
+            </article>
+
+            <article class="feature-card">
+              <div class="feature-icon" aria-hidden="true">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="13 17 18 12 13 7"/>
+                  <polyline points="6 17 11 12 6 7"/>
+                </svg>
+              </div>
+              <h3 class="feature-name">並行任務</h3>
+              <p class="feature-desc">多個 TODO 棧式堆疊。今日、明日、隨時——按時間分層，互不打擾。</p>
+            </article>
+
+            <article class="feature-card">
+              <div class="feature-icon" aria-hidden="true">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="9"/>
+                  <path d="M8 12h8M12 8v8"/>
+                </svg>
+              </div>
+              <h3 class="feature-name">極簡到底</h3>
+              <p class="feature-desc">無訂閱、無追蹤、無雲端賬號。一個本地二進制、一個飛書 Base，足矣。</p>
+            </article>
+
+            <article class="feature-card">
+              <div class="feature-icon" aria-hidden="true">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/>
+                </svg>
+              </div>
+              <h3 class="feature-name">開源真言</h3>
+              <p class="feature-desc">源碼公開、構建可審。不上報用戶行爲，不暗藏遙測。Rust + Tauri，本地優先。</p>
+            </article>
+
+          </div>
+        </div>
+      </section>
+
+      <!-- ========== 3.6 Agent 整合（一句話即任務）—— glow-card 包裹版 ========== -->
+      <section class="agent">
+        <div class="agent-canvas">
+          <!-- 全局 SVG 滤镜：增强 alpha，让微光可见 -->
+          <svg class="glow-svg-defs" aria-hidden="true">
+            <defs>
+              <filter id="glow-unopaq" x="-50%" y="-50%" width="200%" height="200%">
+                <feColorMatrix values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 8 -3"></feColorMatrix>
+              </filter>
+              <linearGradient id="glow-grad" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%"  stop-color="#b8953f" stop-opacity="0"/>
+                <stop offset="50%" stop-color="#c9a84c" stop-opacity="1"/>
+                <stop offset="100%" stop-color="#b8953f" stop-opacity="0"/>
+              </linearGradient>
+            </defs>
+          </svg>
+
+          <div class="glow-card">
+            <!-- 四条发光描边 -->
+            <div class="glow-border glow-border-top"></div>
+            <div class="glow-border glow-border-right"></div>
+            <div class="glow-border glow-border-bottom"></div>
+            <div class="glow-border glow-border-left"></div>
+            <!-- 内容区 -->
+            <div class="glow-card-content">
+
+              <header class="agent-head">
+                <h2 class="agent-title">
+                  One <em class="agent-italic">prompt</em>, one task
+                </h2>
+                <p class="agent-subtitle">從你的 AI 助手到飛書 Base——中間不過一句話的距離</p>
+              </header>
+
+              <div class="agent-stage">
+                <!-- 左：AI Chat mockup -->
+                <div class="agent-mock agent-mock-chat">
+                  <div class="agent-mock-chrome">
+                    <span class="agent-mock-dot"></span>
+                    <span class="agent-mock-dot"></span>
+                    <span class="agent-mock-dot"></span>
+                    <span class="agent-mock-title">Hermes · 對話</span>
+                  </div>
+                  <div class="agent-mock-body">
+                    <div class="chat-bubble chat-bubble-user">
+                      <span class="chat-tag">你</span>
+                      <p>明天 10 點要回 N 君電話，順便給貓買罐頭。</p>
+                    </div>
+                    <div class="chat-bubble chat-bubble-ai">
+                      <span class="chat-tag">Hermes</span>
+                      <p>已建 2 條任務。</p>
+                      <ul class="chat-actions">
+                        <li>· <code>TODOList 明天 10:00 回 N 君電話</code></li>
+                        <li>· <code>TODOList 買貓罐頭</code></li>
+                      </ul>
+                    </div>
+                    <div class="chat-cursor">▍</div>
+                  </div>
+                </div>
+
+                <!-- 中：箭头 -->
+                <div class="agent-arrow" aria-hidden="true">
+                  <svg width="48" height="24" viewBox="0 0 48 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round">
+                    <path d="M0 12h44M36 4l8 8-8 8"/>
+                  </svg>
+                </div>
+
+                <!-- 右：飞书 Base mockup -->
+                <div class="agent-mock agent-mock-base">
+                  <div class="agent-mock-chrome">
+                    <span class="agent-mock-dot"></span>
+                    <span class="agent-mock-dot"></span>
+                    <span class="agent-mock-dot"></span>
+                    <span class="agent-mock-title">飛書 · 一紙手記</span>
+                  </div>
+                  <div class="agent-mock-body">
+                    <div class="base-header">
+                      <span class="base-header-dot"></span>
+                      <span class="base-header-text">LIVE · 已同步</span>
+                    </div>
+                    <table class="base-table">
+                      <thead>
+                        <tr><th>狀態</th><th>內容</th><th>時間</th></tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td><span class="base-status base-status-todo">待辦</span></td>
+                          <td>回 N 君電話</td>
+                          <td class="base-time">明日 10:00</td>
+                        </tr>
+                        <tr>
+                          <td><span class="base-status base-status-anytime">隨時</span></td>
+                          <td>買貓罐頭</td>
+                          <td class="base-time">—</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                    <div class="base-meta">已同步 · 0.3s</div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ========== 3.7 三卡 Agent 功能 ========== -->
+      <section class="agents3">
+        <div class="agents3-inner">
+          <div class="agents3-grid">
+
+            <article class="agents3-card">
+              <div class="agents3-icon" aria-hidden="true">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+                </svg>
+              </div>
+              <h3 class="agents3-name">版本控制 Agent</h3>
+              <p class="agents3-desc">所有任務寫入前都經本地 Git。誤刪、誤改，git revert 即回。</p>
+            </article>
+
+            <article class="agents3-card">
+              <div class="agents3-icon" aria-hidden="true">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="3" width="7" height="7"/>
+                  <rect x="14" y="3" width="7" height="7"/>
+                  <rect x="3" y="14" width="7" height="7"/>
+                </svg>
+              </div>
+              <h3 class="agents3-name">多 Agent 並行</h3>
+              <p class="agents3-desc">Hermes、OpenClaw、Claude Code——誰先建誰先寫，互不覆蓋。</p>
+            </article>
+
+            <article class="agents3-card">
+              <div class="agents3-icon" aria-hidden="true">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="4 17 10 11 4 5"/>
+                  <line x1="12" y1="19" x2="20" y2="19"/>
+                </svg>
+              </div>
+              <h3 class="agents3-name">MCP 通用接口</h3>
+              <p class="agents3-desc">任何支援 MCP 的 agent，皆可調用 TODOList 工具。無需單獨集成。</p>
+            </article>
+
+          </div>
+        </div>
+      </section>
+
+      <!-- ========== 3.8 Feature Updates — 21st.dev 双栏对比结构 ========== -->
+      <section class="demos">
+        <div class="demos-inner">
+          <header class="demos-head">
+            <h2 class="demos-title">
+              <em class="demos-italic">Feature</em> Updates
+            </h2>
+            <a class="demos-all" href="#changelog">All updates →</a>
+          </header>
+
+          <div class="demos-grid">
+
+            <!-- ========== 左栏：代码/CLI 视角 ========== -->
+            <article class="demos-card demos-card-code">
+              <div class="demos-card-head">
+                <div class="demos-tabs">
+                  <button class="demos-tab demos-tab-active">指令流</button>
+                  <button class="demos-tab">配置文件</button>
+                </div>
+                <div class="demos-card-meta">
+                  <span class="demos-card-avatar">H</span>
+                  <span class="demos-card-name">voice-todo-flow</span>
+                </div>
+              </div>
+
+              <div class="demos-code">
+                <div class="demos-code-line"><span class="demos-line-num">1</span><span class="demos-kw">$</span><span class="demos-cmd"> TODOList</span><span class="demos-str"> 明天 10 點回 N 君電話</span></div>
+                <div class="demos-code-line"><span class="demos-line-num">2</span><span class="demos-out">→ 已建立 · 明日 10:00</span></div>
+                <div class="demos-code-line"><span class="demos-line-num">3</span><span class="demos-out">→ 已同步至飛書 Base · 0.3s</span></div>
+                <div class="demos-code-line demos-code-blank"><span class="demos-line-num">4</span><span></span></div>
+                <div class="demos-code-line"><span class="demos-line-num">5</span><span class="demos-kw">$</span><span class="demos-cmd"> TODOList</span><span class="demos-str"> 給貓買罐頭</span></div>
+                <div class="demos-code-line"><span class="demos-line-num">6</span><span class="demos-out">→ 已建立 · 隨時</span></div>
+                <div class="demos-code-line"><span class="demos-line-num">7</span><span class="demos-out">→ 已同步至飛書 Base · 0.3s</span></div>
+                <div class="demos-code-line demos-code-blank"><span class="demos-line-num">8</span><span></span></div>
+                <div class="demos-code-line"><span class="demos-line-num">9</span><span class="demos-kw">$</span><span class="demos-cmd"> TODOShow</span></div>
+                <div class="demos-code-line"><span class="demos-line-num">10</span><span class="demos-out">→ 今日 2 · 計劃 1 · 隨時 2</span></div>
+                <div class="demos-code-line"><span class="demos-line-num">11</span><span class="demos-cursor">█</span></div>
+              </div>
+
+              <div class="demos-card-caption">
+                <h3 class="demos-card-title">語音即錄，命令可審</h3>
+                <p class="demos-card-desc">
+                  每一條 TODO 寫入都是 git 可審的命令流。
+                </p>
+              </div>
+            </article>
+
+            <!-- ========== 右栏：数据/统计视角 ========== -->
+            <article class="demos-card demos-card-stats">
+              <div class="demos-card-head">
+                <div class="demos-card-meta">
+                  <span class="demos-card-avatar demos-card-avatar-live"></span>
+                  <span class="demos-card-name">Live · 過去 7 日</span>
+                </div>
+              </div>
+
+              <div class="demos-stats-hero">
+                <div class="demos-stats-number">1,284</div>
+                <div class="demos-stats-label">條任務已同步至飛書 Base</div>
+              </div>
+
+              <ul class="demos-stats-list">
+                <li class="demos-stats-row">
+                  <span class="demos-stats-dot demos-stats-dot-on"></span>
+                  <span class="demos-stats-name">Hermes</span>
+                  <span class="demos-stats-arrow">→</span>
+                  <span class="demos-stats-target">飛書 Base</span>
+                  <span class="demos-stats-time">0.3s</span>
+                </li>
+                <li class="demos-stats-row">
+                  <span class="demos-stats-dot demos-stats-dot-on"></span>
+                  <span class="demos-stats-name">OpenClaw</span>
+                  <span class="demos-stats-arrow">→</span>
+                  <span class="demos-stats-target">飛書 Base</span>
+                  <span class="demos-stats-time">0.4s</span>
+                </li>
+                <li class="demos-stats-row">
+                  <span class="demos-stats-dot demos-stats-dot-on"></span>
+                  <span class="demos-stats-name">Claude Code</span>
+                  <span class="demos-stats-arrow">→</span>
+                  <span class="demos-stats-target">飛書 Base</span>
+                  <span class="demos-stats-time">0.5s</span>
+                </li>
+                <li class="demos-stats-row">
+                  <span class="demos-stats-dot demos-stats-dot-on"></span>
+                  <span class="demos-stats-name">OpenCode</span>
+                  <span class="demos-stats-arrow">→</span>
+                  <span class="demos-stats-target">飛書 Base</span>
+                  <span class="demos-stats-time">0.3s</span>
+                </li>
+              </ul>
+
+              <div class="demos-card-caption">
+                <h3 class="demos-card-title">多源同步，零延遲</h3>
+                <p class="demos-card-desc">
+                  桌面浮窗與 Base 永遠是同一份事實。
+                </p>
+              </div>
+            </article>
+
+          </div>
+        </div>
+      </section>
+
+      <!-- ========== 3.9 Community voices ========== -->
+      <section class="voices">
+        <div class="voices-inner">
+          <header class="voices-head">
+            <h2 class="voices-title">
+              <em class="voices-italic">Community</em> Voices
+            </h2>
+            <p class="voices-subtitle">來自使用者的真實記錄</p>
+          </header>
+
+          <!-- ====== 跑马灯轨道：左 + 右两个方向 ====== -->
+          <!-- 内容写两遍，第二份用于无缝循环 -->
+          <div class="voices-marquee voices-marquee-a">
+            <div class="voices-fade voices-fade-left" aria-hidden="true"></div>
+            <div class="voices-fade voices-fade-right" aria-hidden="true"></div>
+            <div class="voices-track">
+
+              <article class="voice-card">
+                <p class="voice-quote">「以前用 Things 3，現在換成這個——我能直接對着 AI 說『明天提醒我回電話』，不用切 app。」</p>
+                <div class="voice-avatar voice-avatar-1">N</div>
+              </article>
+
+              <article class="voice-card">
+                <p class="voice-quote">「寫進 Git 版本控制是神來之筆。AI 誤刪了我整個購物清單，一個 <code>git revert</code> 找回來。」</p>
+                <div class="voice-avatar voice-avatar-2">L</div>
+              </article>
+
+              <article class="voice-card">
+                <p class="voice-quote">「OpenClaw 跑在另一台機器上建的任務，會自動合併到我在 Mac 上的 Base。不用記哪個 app 寫的。」</p>
+                <div class="voice-avatar voice-avatar-3">D</div>
+              </article>
+
+              <article class="voice-card">
+                <p class="voice-quote">「簡陋到極致，反而好用。一張卡、一個輸入框、一個 Base。沒有多餘的『智慧推薦』。」</p>
+                <div class="voice-avatar voice-avatar-4">Y</div>
+              </article>
+
+              <article class="voice-card">
+                <p class="voice-quote">「早上喝咖啡時對着 Mac 說『下午三點開會』，下午彈窗剛好跳出來。不需要打開手機。」</p>
+                <div class="voice-avatar voice-avatar-5">M</div>
+              </article>
+
+              <article class="voice-card">
+                <p class="voice-quote">「Base 字段是 schema 不是黑盒。我能直接寫 SQL 查詢我的任務，AI 不會偷偷改我的數據模型。」</p>
+                <div class="voice-avatar voice-avatar-6">K</div>
+              </article>
+
+              <!-- 第二份由 main.js 克隆生成 -->
+
+            </div>
+          </div>
+
+          <div class="voices-marquee voices-marquee-b">
+            <div class="voices-fade voices-fade-left" aria-hidden="true"></div>
+            <div class="voices-fade voices-fade-right" aria-hidden="true"></div>
+            <div class="voices-track voices-track-reverse">
+
+              <article class="voice-card">
+                <p class="voice-quote">「浮窗永遠停在我屏幕右上角，不會被任何 app 遮住。比 Todoist、滴答清單、Things 3 都好用。」</p>
+                <div class="voice-avatar voice-avatar-2">L</div>
+              </article>
+
+              <article class="voice-card">
+                <p class="voice-quote">「我讓 Claude Code 寫的所有 TODO 都會自動回灌到這個 Base。代碼與任務是同一棵 git tree。」</p>
+                <div class="voice-avatar voice-avatar-1">N</div>
+              </article>
+
+              <article class="voice-card">
+                <p class="voice-quote">「⌘⇧T 召喚浮窗，語音輸入，回車。整個建任務流程 3 秒，比打開手機 app 快十倍。」</p>
+                <div class="voice-avatar voice-avatar-4">Y</div>
+              </article>
+
+              <article class="voice-card">
+                <p class="voice-quote">「不需要學習曲線。打開就會用，因為整個 UI 只有一個輸入框。」</p>
+                <div class="voice-avatar voice-avatar-5">M</div>
+              </article>
+
+              <article class="voice-card">
+                <p class="voice-quote">「寫完任務回車的瞬間，飛書手機端也響了。人在外面也不會漏掉任何一條。」</p>
+                <div class="voice-avatar voice-avatar-3">D</div>
+              </article>
+
+              <article class="voice-card">
+                <p class="voice-quote">「OpenCode、Claude Code、Hermes 三個 agent 寫的任務，最後都彙總到同一張表。我終於有 single source of truth 了。」</p>
+                <div class="voice-avatar voice-avatar-6">K</div>
+              </article>
+
+              <!-- 第二份由 main.js 克隆生成 -->
+
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ========== 3.10 Changelog（21st.dev 双栏：左滚动任务流 + 右文案） ========== -->
+      <section class="changelog">
+        <div class="changelog-inner">
+
+          <!-- ====== 左：竖向滚动任务列表 ====== -->
+          <div class="cl-loop">
+            <div class="cl-loop-track" id="cl-loop-track">
+
+              <div class="cl-task">
+                <div class="cl-task-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M3 12h12M3 18h6"/></svg>
+                </div>
+                <div class="cl-task-body">
+                  <p class="cl-task-title">並行任務棧上線</p>
+                  <p class="cl-task-sub">多任務同屏推進 · NOW 標識當前焦點</p>
+                </div>
+              </div>
+
+              <div class="cl-task">
+                <div class="cl-task-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1M12 18v4M8 22h8"/></svg>
+                </div>
+                <div class="cl-task-body">
+                  <p class="cl-task-title">語音即錄</p>
+                  <p class="cl-task-sub">按住 ⌘⇧V 全局喚起 · 鬆手即建任務</p>
+                </div>
+              </div>
+
+              <div class="cl-task">
+                <div class="cl-task-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.93 4.93l2.12 2.12M16.95 16.95l2.12 2.12M4.93 19.07l2.12-2.12M16.95 7.05l2.12-2.12"/></svg>
+                </div>
+                <div class="cl-task-body">
+                  <p class="cl-task-title">Hermes agent 整合</p>
+                  <p class="cl-task-sub">自然語言建任務 · 寫入即同步至飛書 Base</p>
+                </div>
+              </div>
+
+              <div class="cl-task">
+                <div class="cl-task-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                </div>
+                <div class="cl-task-body">
+                  <p class="cl-task-title">飛書 Base 直連</p>
+                  <p class="cl-task-sub">多端可見 · 個人/企業版自動切換</p>
+                </div>
+              </div>
+
+              <div class="cl-task">
+                <div class="cl-task-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10M7 12h10M7 17h6"/><circle cx="18" cy="18" r="3"/><path d="M18 15v3l2 1"/></svg>
+                </div>
+                <div class="cl-task-body">
+                  <p class="cl-task-title">多源同步</p>
+                  <p class="cl-task-sub">Hermes · OpenClaw · Claude Code · OpenCode</p>
+                </div>
+              </div>
+
+              <div class="cl-task">
+                <div class="cl-task-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
+                </div>
+                <div class="cl-task-body">
+                  <p class="cl-task-title">macOS 26 sandbox 修復</p>
+                  <p class="cl-task-sub">WebView 啓動失敗問題已處理</p>
+                </div>
+              </div>
+
+              <div class="cl-task">
+                <div class="cl-task-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7L9 18l-5-5"/></svg>
+                </div>
+                <div class="cl-task-body">
+                  <p class="cl-task-title">首個公開版本 v1.0.0</p>
+                  <p class="cl-task-sub">桌面常顯 widget + CLI + 飛書 Base 同步</p>
+                </div>
+              </div>
+
+              <div class="cl-task">
+                <div class="cl-task-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
+                </div>
+                <div class="cl-task-body">
+                  <p class="cl-task-title">開源釋出於 GitHub</p>
+                  <p class="cl-task-sub">MIT License · 歡迎 PR 與 Issue</p>
+                </div>
+              </div>
+
+            </div>
+            <!-- 卡片内上下渐隐（让滚动自然消失） -->
+            <div class="cl-loop-fade cl-loop-fade-top" aria-hidden="true"></div>
+            <div class="cl-loop-fade cl-loop-fade-bottom" aria-hidden="true"></div>
+          </div>
+
+          <!-- ====== 右：文案 ====== -->
+          <div class="cl-content">
+            <span class="cl-tag">CHANGELOG</span>
+            <h3 class="cl-headline">
+              <span class="cl-headline-strong">一路迭代，</span>
+              <span class="cl-headline-soft">從 v1.0.0 到 v1.0.6——並行任務棧、語音即錄、飛書 Base 直連，每個版本都在解決「今天我能不能少切一次 app」。</span>
+            </h3>
+            <div class="cl-pills">
+              <span class="cl-pill">⌘⇧V 語音即錄</span>
+              <span class="cl-pill">多源 agent 同步</span>
+              <span class="cl-pill">MIT 開源</span>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ========== 3.11 Footer + 下載 ========== -->
+      <footer class="footer">
+        <div class="footer-inner">
+          <div class="footer-grid">
+
+            <div class="footer-cta">
+              <h2 class="footer-title">
+                <em class="footer-italic">Download</em> the app
+              </h2>
+              <div class="footer-buttons">
+                <a class="footer-btn footer-btn-primary" href="#">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
+                  </svg>
+                  <span>macOS (Apple Silicon)</span>
+                </a>
+                <a class="footer-btn" href="#">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="4 17 10 11 4 5"/>
+                    <line x1="12" y1="19" x2="20" y2="19"/>
+                  </svg>
+                  <span>CLI · Brew / Cargo</span>
+                </a>
+              </div>
+              <p class="footer-note">
+                源碼公開於 <a href="https://github.com/young920/voice-todo-float" class="footer-link">GitHub</a> · MIT
+              </p>
+            </div>
+
+            <div class="footer-meta">
+              <h4 class="footer-h">Elsewhere</h4>
+              <ul class="footer-list">
+                <li><a href="#">Discord</a></li>
+                <li><a href="#">Twitter / X</a></li>
+                <li><a href="#">GitHub</a></li>
+              </ul>
+            </div>
+
+          </div>
+
+          <div class="footer-bottom">
+            <span>© 2026 一紙手記. All rights reserved.</span>
+            <span class="footer-bottom-sep">·</span>
+            <a href="#">隱私</a>
+            <span class="footer-bottom-sep">·</span>
+            <a href="#">許可</a>
+          </div>
+        </div>
+      </footer>
 
   <script src="main.js"></script>
 </body>

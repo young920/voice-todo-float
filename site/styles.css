@@ -47,9 +47,10 @@
 }
 
 /* ============================================================
-   全站统一深色基线：3 个 section 局部覆盖变量（级联魔法）
-   demos / voices / changelog — 米色翻转深色
+   全站统一深色基线：4 个 section 局部覆盖变量（级联魔法）
+   hero / demos / voices / changelog — 米色翻转深色
    ============================================================ */
+.hero,
 .demos,
 .voices,
 .changelog {
@@ -234,36 +235,35 @@ a { color: inherit; text-decoration: none; }
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  border-radius: 24px;
-  /* 柔和米白底 + 边缘渐变到透明，让卡片柔和融入背景 */
-  background:
-    radial-gradient(ellipse 95% 88% at 50% 50%, rgba(245, 240, 232, 0.96) 0%, rgba(245, 240, 232, 0.88) 55%, rgba(245, 240, 232, 0.55) 80%, rgba(245, 240, 232, 0.15) 95%, rgba(245, 240, 232, 0) 100%);
-  backdrop-filter: blur(40px) saturate(140%);
-  -webkit-backdrop-filter: blur(40px) saturate(140%);
-  /* 双层弥散阴影：黑色深度 + 桃色晕染，让卡片从背景浮现 */
+  border-radius: 0;              /* 与 features-grid 直线条统一 */
+  /* v18：深底 hero — 与下方所有 section 同色，靠桃色 dither 氛围光和细金边做层次 */
+  background: var(--void-deep);
+  border: 1px solid var(--rule-soft);
+  /* 细内描边 + 极淡桃色 inset 顶光 — 弥散微光 */
   box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.06) inset,
-    0 30px 80px -20px rgba(0, 0, 0, 0.4),
-    0 0 120px -30px rgba(232, 165, 152, 0.25);
+    inset 0 1px 0 rgba(244, 236, 216, 0.04),     /* 顶光 */
+    inset 0 0 0 1px rgba(138, 106, 59, 0.08),    /* 金色极细描边 */
+    0 0 0 1px rgba(0, 0, 0, 0.4);                /* 外深色描边，把卡片压实 */
   overflow: hidden;
   isolation: isolate;
   padding: 1.6rem 3rem 2rem;
-  color: #1a1715;
+  color: var(--paper);
 }
 
-/* Dithering warp shader 背景 — hero 卡片全段透出（v17：撤掉 mask，让 dither 主导 hero 美学） */
+/* Dithering warp shader 背景 — v18：在深色 hero 卡片上，桃色 dither 当暖色氛围光 */
 .hero-dither-bg {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   z-index: 0;
-  opacity: 0.7;
-  mix-blend-mode: multiply;     /* 米白底上 multiply = 深色 dither */
+  opacity: 0.55;                 /* 深底上降低，避免过曝 */
+  mix-blend-mode: screen;        /* 桃色点阵在深底上 = 暖光叠加（不是 multiply 的暗化） */
   pointer-events: none;
+  mask-image: radial-gradient(ellipse 90% 80% at 50% 40%, #000 0%, #000 60%, rgba(0,0,0,0.4) 85%, transparent 100%);
+  -webkit-mask-image: radial-gradient(ellipse 90% 80% at 50% 40%, #000 0%, #000 60%, rgba(0,0,0,0.4) 85%, transparent 100%);
 }
-/* 用 normal 替代 multiply，让桃色叠加在米白上产生柔和渐变 */
-.hero-card .hero-dither-bg { mix-blend-mode: multiply; }
+.hero-card .hero-dither-bg { mix-blend-mode: screen; }
 
 /* hero-stage 内容堆叠（badge → H1 → desc → CTA） */
 .hero-card .hero-stage {
@@ -298,11 +298,11 @@ a { color: inherit; text-decoration: none; }
   justify-content: center;
   gap: 0.6rem;
   padding: 0.8rem 1rem;
-  color: rgba(26, 23, 21, 0.55);
+  color: rgba(244, 236, 216, 0.7);    /* v18：深底 hero — 米色文字 */
   align-self: center;
-  background: rgba(245, 240, 232, 0.7);     /* 极淡米白底，让连接带浮于 dither 之上 */
+  background: rgba(244, 236, 216, 0.04);   /* v18：深底上极淡米色描边底 */
   border-radius: 999px;
-  border: 1px solid rgba(26, 23, 21, 0.08);
+  border: 1px solid rgba(244, 236, 216, 0.1);
   white-space: nowrap;
 }
 .hero-sync-step {
@@ -518,10 +518,11 @@ a { color: inherit; text-decoration: none; }
   content: '';
   position: absolute;
   inset: -0.2rem -0.4rem;
-  background: rgba(245, 240, 232, 0.7);    /* CTA 区蒙层稍淡，因为 CTA 自己有红色 bg */
+  background: rgba(244, 236, 216, 0.04);    /* v18：深底 hero 上蒙层几乎透明 */
   border-radius: 999px;
   z-index: -1;
   pointer-events: none;
+  display: none;  /* v18：深底 hero 不需要米白蒙层 */
 }
 
 /* 按钮通用 */

@@ -1,6 +1,6 @@
 {
   "name": "voice-todo-float",
-  "version": "1.0.15",
+  "version": "1.0.16",
   "description": "语音待办 - 桌面悬浮小部件",
   "scripts": {
     "dev": "tauri dev",

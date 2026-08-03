@@ -22,6 +22,25 @@ single commit on `main`.
 
 ---
 
+## [1.0.16] - 2026-08-03
+
+### Fixed
+- **Windows widget sync failed with `同步锦囊失败: not_configured`.**
+  When `HERMES_HOME` / `OPENCLAW_HOME` / `LARK_CHANNEL` (or any of the other
+  hermes-agent runtime env vars) leaked into the widget's process
+  environment, `lark-cli` auto-detected "Agent context", forced the bind
+  path, and returned `{"ok": false, "error": {"subtype": "not_configured"}}`
+  even though `lark-cli auth status` reported `ready`.
+  `build_command_with_executable()` now strips all `HERMES_*` /
+  `OPENCLAW_HOME` / `LARK_CHANNEL` keys from the spawned `Command`'s
+  environment so the widget's `lark-cli` calls bypass Agent context
+  detection and use the direct user-identity path. Verified on Windows
+  1.0.15 (broken) → 1.0.16 (sync restored).
+
+### Internal
+- Version bumped in `package.json`, `src-tauri/tauri.conf.json`,
+  `src-tauri/Cargo.toml`, `src-tauri/Cargo.lock`.
+
 ## [1.0.15] - 2026-07-21
 
 ### Fixed

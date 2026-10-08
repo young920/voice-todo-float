@@ -768,7 +768,7 @@ body::before {
 }
 
 /* Module views */
-.module-view { display: none; height: 100%; flex-direction: column; }
+.module-view { display: none; height: 100%; flex-direction: column; position: relative; }
 .module-view.active { display: flex; }
 .module-view .tab-panel { display: none; width: 100%; }
 .module-view .tab-panel.active { display: block; }
@@ -792,12 +792,30 @@ body.calendar-mode .btn-search { display: none; }
 }
 .cal-title {
   flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   font-size: 15px;
   font-weight: 600;
   letter-spacing: 0.02em;
   color: var(--ink);
   text-align: center;
 }
+.cal-year-btn, .cal-month-btn {
+  border: none;
+  background: none;
+  padding: 2px 6px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+  cursor: pointer;
+  border-radius: var(--radius);
+  font-family: inherit;
+  transition: all 0.15s;
+}
+.cal-year-btn:hover, .cal-month-btn:hover { color: var(--cinnabar); background: var(--cinnabar-light); }
+.cal-month-btn { color: var(--cinnabar); }
 .cal-nav {
   width: 26px;
   height: 26px;
@@ -855,7 +873,7 @@ body.calendar-mode .btn-search { display: none; }
   display: flex;
   flex-direction: column;
   align-items: center;
-  cursor: default;
+  cursor: pointer;
   transition: background 0.15s;
 }
 .cal-cell:hover { background: var(--paper-light); }
@@ -892,6 +910,8 @@ body.calendar-mode .btn-search { display: none; }
 }
 .cal-cell.today { border-color: var(--cinnabar); background: var(--cinnabar-light); }
 .cal-cell.today .cal-daynum { color: var(--cinnabar); font-weight: 600; }
+.cal-cell.selected { border-color: var(--ink); background: var(--paper-dark); }
+.cal-cell.selected .cal-daynum { color: var(--ink); font-weight: 600; }
 .cal-cell .cal-task-count {
   position: absolute;
   bottom: 2px;
@@ -934,6 +954,84 @@ body.calendar-mode .btn-search { display: none; }
 .sw-work { background: var(--ink-muted); text-decoration: line-through; }
 .sw-today { background: var(--cinnabar); box-shadow: 0 0 0 2px var(--cinnabar-light); }
 .sw-task { background: var(--ink); }
+
+/* Calendar picker (month/year quick select) */
+.cal-picker {
+  position: absolute;
+  top: 40px;
+  left: 0;
+  right: 0;
+  margin: 0 auto;
+  width: 200px;
+  z-index: 1200;
+  background: var(--paper-light);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 8px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+.cal-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+}
+.cal-picker-item {
+  padding: 6px 4px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius);
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 12px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.cal-picker-item:hover { border-color: var(--cinnabar); color: var(--cinnabar); }
+.cal-picker-item.active { background: var(--cinnabar); border-color: var(--cinnabar); color: var(--paper); }
+
+/* Day tasks panel (below calendar) */
+.cal-day-tasks {
+  border-top: 1px solid var(--border-light);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+}
+.cal-day-tasks-header {
+  padding: 8px 12px 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-muted);
+  letter-spacing: 0.04em;
+}
+.cal-day-tasks-body {
+  padding: 2px 12px 10px;
+  font-size: 13px;
+  color: var(--ink);
+}
+.cal-day-task-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--border-light);
+}
+.cal-day-task-item:last-child { border-bottom: none; }
+.cal-day-task-item.done .cal-day-task-name { text-decoration: line-through; color: var(--ink-muted); }
+.cal-day-task-prio {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.cal-day-task-prio.p-high { background: var(--cinnabar); }
+.cal-day-task-prio.p-medium { background: var(--gold); }
+.cal-day-task-prio.p-low { background: var(--ink-muted); }
+.cal-day-task-name { flex: 1; }
+.cal-day-tasks-empty { color: var(--ink-muted); padding: 6px 0; }
 
 /* Title dropdown */
 .title-dropdown {
@@ -1374,10 +1472,14 @@ body.favorites-mode .btn-add { display: flex; }
     <div class="module-view" id="module-calendar">
       <div class="calendar-toolbar">
         <button class="cal-nav" id="calPrev" title="上个月">‹</button>
-        <div class="cal-title" id="calTitle"></div>
+        <div class="cal-title" id="calTitle">
+          <button class="cal-year-btn" id="calYearBtn"></button>
+          <button class="cal-month-btn" id="calMonthBtn"></button>
+        </div>
         <button class="cal-nav" id="calNext" title="下个月">›</button>
         <button class="cal-today" id="calToday">今</button>
       </div>
+      <div class="cal-picker" id="calPicker" style="display:none;"></div>
       <div class="cal-weekdays">
         <span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span class="cal-wkend">六</span><span class="cal-wkend">日</span>
       </div>
@@ -1387,6 +1489,10 @@ body.favorites-mode .btn-add { display: flex; }
         <span class="legend-item"><i class="sw sw-work">补</i>调休补班</span>
         <span class="legend-item"><i class="sw sw-today">今</i>今天</span>
         <span class="legend-item"><i class="sw sw-task">N</i>有待办</span>
+      </div>
+      <div class="cal-day-tasks">
+        <div class="cal-day-tasks-header" id="calDayTasksHeader">当日待办</div>
+        <div class="cal-day-tasks-body" id="calDayTasksBody"></div>
       </div>
     </div>
   </div>
@@ -2526,6 +2632,7 @@ function renderTasks() {
 /* ===== Calendar module ===== */
 let calYear = new Date().getFullYear();
 let calMonth = new Date().getMonth(); // 0-indexed
+let calSelectedDate = null; // 'YYYY-MM-DD' or null
 const holidayCache = {}; // { year: { 'YYYY-MM-DD': { name, isOffDay } } }
 
 function pad2(n) { return String(n).padStart(2, '0'); }
@@ -2554,11 +2661,26 @@ function getHolidayInfo(map, y, m, d) {
   return map ? map[dateKey(y, m, d)] : null;
 }
 
+// Determine rest/work status for a date
+// Returns: 'rest' (休息日), 'work' (调休补班), 'normal' (普通工作日), or null for other-month
+function getDayStatus(map, y, m, d, isOtherMonth) {
+  if (isOtherMonth) return null;
+  const dow = new Date(y, m, d).getDay(); // 0=Sun, 6=Sat
+  const isWeekend = (dow === 0 || dow === 6);
+  const h = getHolidayInfo(map, y, m, d);
+  if (h) {
+    return h.isOffDay ? 'rest' : 'work'; // 法定节假日休息 或 调休补班
+  }
+  return isWeekend ? 'rest' : 'normal'; // 周末休息，否则普通工作日
+}
+
 function renderCalendar() {
   const grid = document.getElementById('calGrid');
   if (!grid) return;
-  const title = document.getElementById('calTitle');
-  title.textContent = `${calYear}年 ${calMonth + 1}月`;
+  const yearBtn = document.getElementById('calYearBtn');
+  const monthBtn = document.getElementById('calMonthBtn');
+  if (yearBtn) yearBtn.textContent = `${calYear}年`;
+  if (monthBtn) monthBtn.textContent = `${calMonth + 1}月`;
 
   // Aggregate tasks by deadline date (YYYY-MM-DD)
   const taskCount = {};
@@ -2608,23 +2730,45 @@ function renderCalendar() {
     const todayKeyLocal = todayKey;
     grid.innerHTML = cells.map(cell => {
       const key = dateKey(cell.y, cell.m, cell.d);
-      const h = getHolidayInfo(maps[cell.y], cell.y, cell.m, cell.d);
       const isToday = key === todayKeyLocal;
+      const isSelected = key === calSelectedDate;
+      const status = getDayStatus(maps[cell.y], cell.y, cell.m, cell.d, cell.other);
       let cls = ['cal-cell'];
       if (cell.other) cls.push('other-month');
-      if (h && h.isOffDay) cls.push('rest');
-      else if (h && !h.isOffDay) cls.push('work');
+      if (status === 'rest') cls.push('rest');
+      else if (status === 'work') cls.push('work');
       if (isToday) cls.push('today');
+      if (isSelected) cls.push('selected');
       const count = taskCount[key] || 0;
+      const h = getHolidayInfo(maps[cell.y], cell.y, cell.m, cell.d);
       const name = h ? h.name : '';
       const nameHtml = name ? `<span class="cal-holiday-name">${name}${h && !h.isOffDay ? '·补' : ''}</span>` : '';
       const countHtml = count > 0 ? `<span class="cal-task-count">${count}</span>` : '';
-      return `<div class="${cls.join(' ')}" data-date="${key}">
-        <span class="cal-daynum">${cell.d}</span>
+      // Other-month cells show no number (blank placeholder) to avoid confusion
+      const dayNumHtml = cell.other ? '' : `<span class="cal-daynum">${cell.d}</span>`;
+      return `<div class="${cls.join(' ')}" data-date="${key}" data-other="${cell.other}">
+        ${dayNumHtml}
         ${nameHtml}
         ${countHtml}
       </div>`;
     }).join('');
+    // Bind click on cells to show day tasks
+    grid.querySelectorAll('.cal-cell').forEach(cell => {
+      cell.addEventListener('click', () => {
+        const key = cell.getAttribute('data-date');
+        const isOther = cell.getAttribute('data-other') === 'true';
+        if (isOther) {
+          // Clicking an other-month cell navigates to that month
+          const [y, m] = key.split('-').map(Number);
+          calYear = y; calMonth = m - 1;
+          calSelectedDate = key;
+          renderCalendar();
+          return;
+        }
+        calSelectedDate = key;
+        renderCalendar();
+      });
+    });
   };
 
   // Render immediately with whatever is cached, then re-render when async data arrives
@@ -2636,19 +2780,93 @@ function renderCalendar() {
     involvedYears.forEach(y => { freshMaps[y] = holidayCache[y] || {}; });
     renderCells(freshMaps);
   });
+
+  renderDayTasks();
+}
+
+// Show the tasks for the selected date (or today if none selected)
+function renderDayTasks() {
+  const header = document.getElementById('calDayTasksHeader');
+  const body = document.getElementById('calDayTasksBody');
+  if (!header || !body) return;
+  const target = calSelectedDate || dateKey(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
+  const d = new Date(target);
+  const label = `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
+  const dow = ['周日','周一','周二','周三','周四','周五','周六'][d.getDay()];
+  header.textContent = `${label} · ${dow}`;
+
+  const dayTasks = tasks.filter(t => {
+    if (!t.deadline) return false;
+    const td = new Date(t.deadline);
+    if (isNaN(td)) return false;
+    return dateKey(td.getFullYear(), td.getMonth(), td.getDate()) === target;
+  }).sort(sortByPriority);
+
+  if (dayTasks.length === 0) {
+    body.innerHTML = `<div class="cal-day-tasks-empty">暂无待办</div>`;
+    return;
+  }
+  body.innerHTML = dayTasks.map(t => {
+    const prioClass = { '高': 'p-high', '中': 'p-medium', '低': 'p-low' }[(t.priority || '').trim()] || 'p-medium';
+    const done = t.status === '已完成' ? 'done' : '';
+    return `<div class="cal-day-task-item ${done}">
+      <span class="cal-day-task-prio ${prioClass}"></span>
+      <span class="cal-day-task-name">${escapeHtml(t.name)}</span>
+    </div>`;
+  }).join('');
+}
+
+function showCalPicker(type) {
+  const picker = document.getElementById('calPicker');
+  if (!picker) return;
+  if (type === 'month') {
+    const months = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+    picker.innerHTML = `<div class="cal-picker-grid">${months.map((m, i) =>
+      `<div class="cal-picker-item ${i === calMonth ? 'active' : ''}" data-val="${i}">${m}</div>`
+    ).join('')}</div>`;
+  } else if (type === 'year') {
+    const curYear = new Date().getFullYear();
+    const years = [];
+    for (let y = curYear - 5; y <= curYear + 5; y++) years.push(y);
+    picker.innerHTML = `<div class="cal-picker-grid">${years.map(y =>
+      `<div class="cal-picker-item ${y === calYear ? 'active' : ''}" data-val="${y}">${y}年</div>`
+    ).join('')}</div>`;
+  }
+  picker.style.display = 'block';
+  picker.querySelectorAll('.cal-picker-item').forEach(item => {
+    item.addEventListener('click', () => {
+      const val = parseInt(item.getAttribute('data-val'), 10);
+      if (type === 'month') calMonth = val;
+      else calYear = val;
+      picker.style.display = 'none';
+      renderCalendar();
+    });
+  });
 }
 
 function bindCalendarEvents() {
   const prev = document.getElementById('calPrev');
   const next = document.getElementById('calNext');
   const todayBtn = document.getElementById('calToday');
-  if (prev) prev.addEventListener('click', () => { calMonth--; if (calMonth < 0) { calMonth = 11; calYear--; } renderCalendar(); });
-  if (next) next.addEventListener('click', () => { calMonth++; if (calMonth > 11) { calMonth = 0; calYear++; } renderCalendar(); });
+  const yearBtn = document.getElementById('calYearBtn');
+  const monthBtn = document.getElementById('calMonthBtn');
+  const picker = document.getElementById('calPicker');
+  if (prev) prev.addEventListener('click', () => { calMonth--; if (calMonth < 0) { calMonth = 11; calYear--; } calSelectedDate = null; renderCalendar(); });
+  if (next) next.addEventListener('click', () => { calMonth++; if (calMonth > 11) { calMonth = 0; calYear++; } calSelectedDate = null; renderCalendar(); });
   if (todayBtn) todayBtn.addEventListener('click', () => {
     const now = new Date();
     calYear = now.getFullYear();
     calMonth = now.getMonth();
+    calSelectedDate = null;
     renderCalendar();
+  });
+  if (yearBtn) yearBtn.addEventListener('click', (e) => { e.stopPropagation(); showCalPicker('year'); });
+  if (monthBtn) monthBtn.addEventListener('click', (e) => { e.stopPropagation(); showCalPicker('month'); });
+  // Close picker on outside click
+  document.addEventListener('click', (e) => {
+    if (picker && !e.target.closest('#calTitle') && !e.target.closest('#calPicker')) {
+      picker.style.display = 'none';
+    }
   });
 }
 

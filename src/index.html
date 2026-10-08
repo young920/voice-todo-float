@@ -777,6 +777,164 @@ body.favorites-mode .search-panel.show { display: none; }
 body.favorites-mode .btn-add { display: none; }
 body.favorites-mode .btn-search { display: none; }
 
+/* Calendar module */
+body.calendar-mode .tab-bar { display: none; }
+body.calendar-mode .search-panel.show { display: none; }
+body.calendar-mode .btn-add { display: none; }
+body.calendar-mode .btn-search { display: none; }
+
+.calendar-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px 6px;
+  border-bottom: 1px solid var(--border-light);
+}
+.cal-title {
+  flex: 1;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--ink);
+  text-align: center;
+}
+.cal-nav {
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--paper-light);
+  color: var(--ink-muted);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.cal-nav:hover { color: var(--cinnabar); border-color: var(--cinnabar); }
+.cal-today {
+  padding: 3px 9px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--paper-light);
+  color: var(--ink-light);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.cal-today:hover { color: var(--cinnabar); border-color: var(--cinnabar); }
+
+.cal-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  padding: 6px 12px 2px;
+  font-size: 11px;
+  color: var(--ink-muted);
+  text-align: center;
+  letter-spacing: 0.08em;
+}
+.cal-weekdays .cal-wkend { color: var(--cinnabar); opacity: 0.7; }
+
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+  padding: 4px 12px 8px;
+  flex: 1;
+  align-content: start;
+  overflow-y: auto;
+}
+.cal-cell {
+  position: relative;
+  min-height: 44px;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  padding: 3px 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: default;
+  transition: background 0.15s;
+}
+.cal-cell:hover { background: var(--paper-light); }
+.cal-cell.other-month { opacity: 0.32; }
+.cal-cell .cal-daynum {
+  font-size: 13px;
+  line-height: 1.2;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.cal-cell .cal-holiday-name {
+  font-size: 9px;
+  line-height: 1.1;
+  margin-top: 1px;
+  color: var(--ink-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.cal-cell.rest .cal-daynum { color: var(--cinnabar); }
+.cal-cell.rest .cal-holiday-name { color: var(--cinnabar); }
+.cal-cell.work .cal-daynum { color: var(--ink-muted); text-decoration: line-through; text-decoration-color: var(--ink-muted); text-decoration-thickness: 1px; }
+.cal-cell.work .cal-holiday-name { color: var(--ink-muted); }
+.cal-cell.work::after {
+  content: '';
+  position: absolute;
+  bottom: 2px;
+  left: 15%;
+  right: 15%;
+  height: 2px;
+  background: var(--ink-muted);
+  opacity: 0.6;
+}
+.cal-cell.today { border-color: var(--cinnabar); background: var(--cinnabar-light); }
+.cal-cell.today .cal-daynum { color: var(--cinnabar); font-weight: 600; }
+.cal-cell .cal-task-count {
+  position: absolute;
+  bottom: 2px;
+  right: 3px;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
+  border-radius: 7px;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 9px;
+  line-height: 14px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.cal-legend {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 12px 10px;
+  border-top: 1px solid var(--border-light);
+  font-size: 11px;
+  color: var(--ink-muted);
+}
+.legend-item { display: inline-flex; align-items: center; gap: 4px; }
+.sw {
+  width: 14px;
+  height: 14px;
+  border-radius: 2px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  line-height: 1;
+  font-style: normal;
+  color: var(--paper);
+}
+.sw-rest { background: var(--cinnabar); }
+.sw-work { background: var(--ink-muted); text-decoration: line-through; }
+.sw-today { background: var(--cinnabar); box-shadow: 0 0 0 2px var(--cinnabar-light); }
+.sw-task { background: var(--ink); }
+
 /* Title dropdown */
 .title-dropdown {
   position: relative;
@@ -1124,6 +1282,7 @@ body.favorites-mode .btn-add { display: flex; }
       <div class="title-menu" id="titleMenu">
         <div class="title-menu-item active" data-module="tasks">一纸待办</div>
         <div class="title-menu-item" data-module="favorites">一纸锦囊</div>
+        <div class="title-menu-item" data-module="calendar">日历</div>
       </div>
     </div>
     <span class="collapsed-icon">纸</span>
@@ -1211,6 +1370,24 @@ body.favorites-mode .btn-add { display: flex; }
       </div>
       <div class="category-bar" id="categoryBar"></div>
       <div class="favorites-list" id="favoritesList"></div>
+    </div>
+    <div class="module-view" id="module-calendar">
+      <div class="calendar-toolbar">
+        <button class="cal-nav" id="calPrev" title="上个月">‹</button>
+        <div class="cal-title" id="calTitle"></div>
+        <button class="cal-nav" id="calNext" title="下个月">›</button>
+        <button class="cal-today" id="calToday">今</button>
+      </div>
+      <div class="cal-weekdays">
+        <span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span class="cal-wkend">六</span><span class="cal-wkend">日</span>
+      </div>
+      <div class="cal-grid" id="calGrid"></div>
+      <div class="cal-legend">
+        <span class="legend-item"><i class="sw sw-rest">休</i>休息日</span>
+        <span class="legend-item"><i class="sw sw-work">补</i>调休补班</span>
+        <span class="legend-item"><i class="sw sw-today">今</i>今天</span>
+        <span class="legend-item"><i class="sw sw-task">N</i>有待办</span>
+      </div>
     </div>
   </div>
 </div>
@@ -1437,21 +1614,25 @@ async function loadTags() {
 function switchModule(module) {
   currentModule = module;
   document.body.classList.toggle('favorites-mode', module === 'favorites');
+  document.body.classList.toggle('calendar-mode', module === 'calendar');
   document.querySelectorAll('.module-view').forEach(el => el.classList.remove('active'));
   const activeModule = document.getElementById('module-' + module);
   if (activeModule) activeModule.classList.add('active');
   document.querySelectorAll('.title-menu-item').forEach(el => el.classList.toggle('active', el.getAttribute('data-module') === module));
-  document.getElementById('titleText').textContent = module === 'favorites' ? '一纸锦囊' : '一纸待办';
+  const moduleTitles = { tasks: '一纸待办', favorites: '一纸锦囊', calendar: '日历' };
+  document.getElementById('titleText').textContent = moduleTitles[module] || '一纸待办';
   document.getElementById('titleDropdown').classList.remove('open');
   
   // Sync search/add state visibility per module
   const taskSearchPanel = document.getElementById('searchPanel');
   const favSearchPanel = document.getElementById('favSearchPanel');
-  if (taskSearchPanel) taskSearchPanel.classList.toggle('show', module !== 'favorites' && searchVisible);
+  if (taskSearchPanel) taskSearchPanel.classList.toggle('show', module === 'tasks' && searchVisible);
   if (favSearchPanel) favSearchPanel.classList.toggle('show', module === 'favorites' && favSearchVisible);
   
   if (module === 'favorites') {
     renderFavorites();
+  } else if (module === 'calendar') {
+    renderCalendar();
   } else {
     renderTasks();
   }
@@ -2342,6 +2523,135 @@ function renderTasks() {
   bindDynamicEvents();
 }
 
+/* ===== Calendar module ===== */
+let calYear = new Date().getFullYear();
+let calMonth = new Date().getMonth(); // 0-indexed
+const holidayCache = {}; // { year: { 'YYYY-MM-DD': { name, isOffDay } } }
+
+function pad2(n) { return String(n).padStart(2, '0'); }
+function dateKey(y, m, d) { return `${y}-${pad2(m + 1)}-${pad2(d)}`; }
+
+// Load holiday data for a year from holiday-cn (GitHub raw, backed by 国务院公告)
+async function loadHolidays(year) {
+  if (holidayCache[year]) return holidayCache[year];
+  const url = `https://raw.githubusercontent.com/NateScarlet/holiday-cn/master/${year}.json`;
+  try {
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+    const map = {};
+    (data.days || []).forEach(d => { map[d.date] = { name: d.name, isOffDay: d.isOffDay }; });
+    holidayCache[year] = map;
+    return map;
+  } catch (e) {
+    console.warn('加载节假日数据失败', e);
+    holidayCache[year] = {}; // cache empty to avoid refetch spam
+    return holidayCache[year];
+  }
+}
+
+function getHolidayInfo(map, y, m, d) {
+  return map ? map[dateKey(y, m, d)] : null;
+}
+
+function renderCalendar() {
+  const grid = document.getElementById('calGrid');
+  if (!grid) return;
+  const title = document.getElementById('calTitle');
+  title.textContent = `${calYear}年 ${calMonth + 1}月`;
+
+  // Aggregate tasks by deadline date (YYYY-MM-DD)
+  const taskCount = {};
+  tasks.forEach(t => {
+    if (!t.deadline) return;
+    const d = new Date(t.deadline);
+    if (isNaN(d)) return;
+    const key = dateKey(d.getFullYear(), d.getMonth(), d.getDate());
+    taskCount[key] = (taskCount[key] || 0) + 1;
+  });
+
+  const today = new Date();
+  const todayKey = dateKey(today.getFullYear(), today.getMonth(), today.getDate());
+
+  // Load holidays for current and adjacent months' years
+  const firstDay = new Date(calYear, calMonth, 1);
+  const startDow = (firstDay.getDay() + 6) % 7; // Monday-first: Sun=6, Mon=0
+  const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+  const prevYear = calMonth === 0 ? calYear - 1 : calYear;
+  const prevMonth = calMonth === 0 ? 11 : calMonth - 1;
+  const nextYear = calMonth === 11 ? calYear + 1 : calYear;
+  const nextMonth = calMonth === 11 ? 0 : calMonth + 1;
+  const daysInPrev = new Date(prevYear, prevMonth + 1, 0).getDate();
+
+  const cells = [];
+  // Leading cells from previous month
+  for (let i = startDow - 1; i >= 0; i--) {
+    const d = daysInPrev - i;
+    cells.push({ y: prevYear, m: prevMonth, d, other: true });
+  }
+  // Current month
+  for (let d = 1; d <= daysInMonth; d++) {
+    cells.push({ y: calYear, m: calMonth, d, other: false });
+  }
+  // Trailing cells to fill the week
+  const total = cells.length;
+  const trailing = (7 - (total % 7)) % 7;
+  for (let i = 1; i <= trailing; i++) {
+    cells.push({ y: nextYear, m: nextMonth, d: i, other: true });
+  }
+
+  // Load holiday maps for the involved years (async, non-blocking render)
+  const involvedYears = [...new Set([prevYear, calYear, nextYear])];
+  involvedYears.forEach(y => loadHolidays(y));
+
+  const renderCells = (maps) => {
+    const todayKeyLocal = todayKey;
+    grid.innerHTML = cells.map(cell => {
+      const key = dateKey(cell.y, cell.m, cell.d);
+      const h = getHolidayInfo(maps[cell.y], cell.y, cell.m, cell.d);
+      const isToday = key === todayKeyLocal;
+      let cls = ['cal-cell'];
+      if (cell.other) cls.push('other-month');
+      if (h && h.isOffDay) cls.push('rest');
+      else if (h && !h.isOffDay) cls.push('work');
+      if (isToday) cls.push('today');
+      const count = taskCount[key] || 0;
+      const name = h ? h.name : '';
+      const nameHtml = name ? `<span class="cal-holiday-name">${name}${h && !h.isOffDay ? '·补' : ''}</span>` : '';
+      const countHtml = count > 0 ? `<span class="cal-task-count">${count}</span>` : '';
+      return `<div class="${cls.join(' ')}" data-date="${key}">
+        <span class="cal-daynum">${cell.d}</span>
+        ${nameHtml}
+        ${countHtml}
+      </div>`;
+    }).join('');
+  };
+
+  // Render immediately with whatever is cached, then re-render when async data arrives
+  const cachedMaps = {};
+  involvedYears.forEach(y => { cachedMaps[y] = holidayCache[y] || {}; });
+  renderCells(cachedMaps);
+  Promise.all(involvedYears.map(y => loadHolidays(y))).then(() => {
+    const freshMaps = {};
+    involvedYears.forEach(y => { freshMaps[y] = holidayCache[y] || {}; });
+    renderCells(freshMaps);
+  });
+}
+
+function bindCalendarEvents() {
+  const prev = document.getElementById('calPrev');
+  const next = document.getElementById('calNext');
+  const todayBtn = document.getElementById('calToday');
+  if (prev) prev.addEventListener('click', () => { calMonth--; if (calMonth < 0) { calMonth = 11; calYear--; } renderCalendar(); });
+  if (next) next.addEventListener('click', () => { calMonth++; if (calMonth > 11) { calMonth = 0; calYear++; } renderCalendar(); });
+  if (todayBtn) todayBtn.addEventListener('click', () => {
+    const now = new Date();
+    calYear = now.getFullYear();
+    calMonth = now.getMonth();
+    renderCalendar();
+  });
+}
+
 function bindDynamicEvents() {
   const addInput = document.getElementById('addInput');
   if (addInput) {
@@ -2699,6 +3009,7 @@ window.addEventListener('DOMContentLoaded', () => {
   initVoice();
   renderTasks();
   renderFavorites();
+  bindCalendarEvents();
   loadTasks();
   loadFavorites();
   loadTags();

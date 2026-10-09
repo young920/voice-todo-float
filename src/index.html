@@ -2811,7 +2811,15 @@ async function loadHolidays(year) {
   if (holidayCache[year]) return holidayCache[year];
   const url = `https://raw.githubusercontent.com/NateScarlet/holiday-cn/master/${year}.json`;
   try {
-    const resp = await fetch(url);
+    // AbortController timeout so a hung fetch can't leave the UI stuck on "加载中"
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 8000);
+    let resp;
+    try {
+      resp = await fetch(url, { signal: controller.signal });
+    } finally {
+      clearTimeout(timer);
+    }
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const data = await resp.json();
     const map = {};
@@ -3099,12 +3107,13 @@ function showCalPicker(type) {
 async function renderHolidayPanel() {
   const panel = document.getElementById('calHolidayPanel');
   if (!panel) return;
+  panel.innerHTML = `<div class="hp-empty">${calYear}年放假安排加载中…</div>`;
   const map = await loadHolidays(calYear);
   const entries = Object.entries(map || {})
     .filter(([, v]) => v && v.name)
     .sort((a, b) => a[0].localeCompare(b[0]));
   if (entries.length === 0) {
-    panel.innerHTML = `<div class="hp-empty">${calYear}年放假安排加载中…</div>`;
+    panel.innerHTML = `<div class="hp-empty">${calYear}年放假安排加载失败，请检查网络后重试</div>`;
     return;
   }
   panel.innerHTML = entries.map(([key, v]) => {

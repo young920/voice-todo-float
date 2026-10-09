@@ -3107,13 +3107,23 @@ function showCalPicker(type) {
 async function renderHolidayPanel() {
   const panel = document.getElementById('calHolidayPanel');
   if (!panel) return;
+  // If data already cached, render immediately — no "加载中" flash
+  const cached = holidayCache[calYear];
+  if (cached && Object.keys(cached).length > 0) {
+    renderHolidayEntries(panel, cached, calYear);
+    return;
+  }
   panel.innerHTML = `<div class="hp-empty">${calYear}年放假安排加载中…</div>`;
   const map = await loadHolidays(calYear);
+  renderHolidayEntries(panel, map, calYear);
+}
+
+function renderHolidayEntries(panel, map, year) {
   const entries = Object.entries(map || {})
     .filter(([, v]) => v && v.name)
     .sort((a, b) => a[0].localeCompare(b[0]));
   if (entries.length === 0) {
-    panel.innerHTML = `<div class="hp-empty">${calYear}年放假安排加载失败，请检查网络后重试</div>`;
+    panel.innerHTML = `<div class="hp-empty">${year}年放假安排加载失败，请检查网络后重试</div>`;
     return;
   }
   panel.innerHTML = entries.map(([key, v]) => {

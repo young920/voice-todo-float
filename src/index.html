@@ -858,23 +858,26 @@ body.calendar-mode .btn-search { display: none; }
 .cal-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
+  grid-auto-rows: 1fr;
   gap: 3px;
   padding: 4px 12px 8px;
   flex: 1;
-  align-content: start;
   overflow-y: auto;
+  min-height: 0;
 }
 .cal-cell {
   position: relative;
-  min-height: 44px;
+  min-height: 0;
   border: 1px solid transparent;
   border-radius: 2px;
-  padding: 3px 4px;
+  padding: 2px 4px;
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: flex-start;
   cursor: pointer;
   transition: background 0.15s;
+  overflow: hidden;
 }
 .cal-cell:hover { background: var(--paper-light); }
 .cal-cell.other-month { opacity: 0.32; }
@@ -1032,6 +1035,127 @@ body.calendar-mode .btn-search { display: none; }
 .cal-day-task-prio.p-low { background: var(--ink-muted); }
 .cal-day-task-name { flex: 1; }
 .cal-day-tasks-empty { color: var(--ink-muted); padding: 6px 0; }
+
+/* Calendar sub-bar (day-of-year + start-dow + holiday actions) */
+.cal-subbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 12px 2px;
+  font-size: 11px;
+  color: var(--ink-muted);
+}
+.cal-sub-actions { display: inline-flex; gap: 4px; }
+.cal-mini-btn {
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--paper-light);
+  color: var(--ink-light);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: inherit;
+}
+.cal-mini-btn:hover { color: var(--cinnabar); border-color: var(--cinnabar); }
+.cal-mini-btn.active { background: var(--cinnabar); border-color: var(--cinnabar); color: var(--paper); }
+
+/* Holiday schedule panel (dropdown under sub-bar) */
+.cal-holiday-panel {
+  position: absolute;
+  top: 74px;
+  left: 0;
+  right: 0;
+  margin: 0 auto;
+  width: 260px;
+  z-index: 1200;
+  background: var(--paper-light);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 8px 10px;
+  max-height: 220px;
+  overflow-y: auto;
+  font-size: 12px;
+  color: var(--ink);
+}
+.cal-holiday-panel .hp-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--border-light);
+}
+.cal-holiday-panel .hp-item:last-child { border-bottom: none; }
+.cal-holiday-panel .hp-date { font-variant-numeric: tabular-nums; color: var(--ink-muted); min-width: 74px; }
+.cal-holiday-panel .hp-name { flex: 1; }
+.cal-holiday-panel .hp-tag {
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 2px;
+  color: var(--paper);
+}
+.cal-holiday-panel .hp-tag.rest { background: var(--cinnabar); }
+.cal-holiday-panel .hp-tag.work { background: var(--ink-muted); }
+.cal-holiday-panel .hp-empty { color: var(--ink-muted); text-align: center; padding: 8px 0; }
+
+/* Lunar day number inside each cell */
+.cal-cell .cal-lunar {
+  font-size: 9px;
+  line-height: 1.1;
+  margin-top: 1px;
+  color: var(--ink-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.cal-cell.rest .cal-lunar { color: var(--cinnabar); opacity: 0.8; }
+.cal-cell.work .cal-lunar { color: var(--ink-muted); opacity: 0.7; }
+.cal-cell .cal-jieqi {
+  font-size: 9px;
+  line-height: 1.1;
+  margin-top: 1px;
+  color: var(--gold);
+  font-weight: 600;
+}
+.cal-cell .cal-festival {
+  font-size: 9px;
+  line-height: 1.1;
+  margin-top: 1px;
+  color: var(--ink-light);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.cal-cell.rest .cal-festival { color: var(--cinnabar); }
+
+/* Selected-day detail panel (lunar / ganzhi / yi-ji) */
+.cal-day-detail {
+  border-top: 1px solid var(--border-light);
+  padding: 8px 12px;
+  font-size: 12px;
+  color: var(--ink);
+  background: var(--paper-light);
+}
+.cal-detail-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 3px;
+}
+.cal-detail-row:last-child { margin-bottom: 0; }
+.cal-detail-label {
+  color: var(--ink-muted);
+  font-size: 11px;
+  min-width: 22px;
+  flex-shrink: 0;
+}
+.cal-detail-ganzhi { font-weight: 600; color: var(--ink); }
+.cal-detail-yiji { display: inline-flex; gap: 6px; flex-wrap: wrap; }
+.cal-yi { color: var(--cinnabar); }
+.cal-ji { color: var(--ink-muted); }
 
 /* Title dropdown */
 .title-dropdown {
@@ -1479,9 +1603,16 @@ body.favorites-mode .btn-add { display: flex; }
         <button class="cal-nav" id="calNext" title="下个月">›</button>
         <button class="cal-today" id="calToday">今</button>
       </div>
+      <div class="cal-subbar">
+        <span class="cal-dayofyear" id="calDayOfYear"></span>
+        <div class="cal-sub-actions">
+          <button class="cal-mini-btn" id="calStartDowBtn" title="切换每周起始日">周一</button>
+          <button class="cal-mini-btn" id="calHolidayBtn" title="放假安排">放假</button>
+        </div>
+      </div>
       <div class="cal-picker" id="calPicker" style="display:none;"></div>
-      <div class="cal-weekdays">
-        <span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span class="cal-wkend">六</span><span class="cal-wkend">日</span>
+      <div class="cal-holiday-panel" id="calHolidayPanel" style="display:none;"></div>
+      <div class="cal-weekdays" id="calWeekdays">
       </div>
       <div class="cal-grid" id="calGrid"></div>
       <div class="cal-legend">
@@ -1490,6 +1621,7 @@ body.favorites-mode .btn-add { display: flex; }
         <span class="legend-item"><i class="sw sw-today">今</i>今天</span>
         <span class="legend-item"><i class="sw sw-task">N</i>有待办</span>
       </div>
+      <div class="cal-day-detail" id="calDayDetail"></div>
       <div class="cal-day-tasks">
         <div class="cal-day-tasks-header" id="calDayTasksHeader">当日待办</div>
         <div class="cal-day-tasks-body" id="calDayTasksBody"></div>
@@ -1506,6 +1638,9 @@ body.favorites-mode .btn-add { display: flex; }
 </div>
 
 <div class="toast" id="toast"></div>
+
+<!-- lunar-javascript: 农历/黄历/节气/宜忌 (MIT, 纯前端离线计算, 无网络依赖) -->
+<script src="lunar.js"></script>
 
 <script>
 let tasks = [];
@@ -2633,10 +2768,43 @@ function renderTasks() {
 let calYear = new Date().getFullYear();
 let calMonth = new Date().getMonth(); // 0-indexed
 let calSelectedDate = null; // 'YYYY-MM-DD' or null
+let calStartDow = 1; // 1 = Monday-first, 0 = Sunday-first
+let calHolidayPanelOpen = false;
 const holidayCache = {}; // { year: { 'YYYY-MM-DD': { name, isOffDay } } }
 
 function pad2(n) { return String(n).padStart(2, '0'); }
 function dateKey(y, m, d) { return `${y}-${pad2(m + 1)}-${pad2(d)}`; }
+
+// ---- lunar-javascript helpers (农历/黄历/节气/宜忌) ----
+// Returns lunar info for a solar date, or null if lunar.js isn't loaded.
+function getLunarInfo(y, m, d) {
+  if (typeof Solar === 'undefined') return null;
+  try {
+    const lunar = Solar.fromYmd(y, m + 1, d).getLunar();
+    const jieQi = lunar.getJieQi() || '';
+    const festivals = lunar.getFestivals().concat(lunar.getOtherFestivals());
+    return {
+      lunarMonth: lunar.getMonthInChinese(),   // e.g. '八'
+      lunarDay: lunar.getDayInChinese(),        // e.g. '廿九'
+      lunarFull: `${lunar.getYearInGanZhi()}年 ${lunar.getMonthInGanZhi()}月 ${lunar.getDayInGanZhi()}日`,
+      shengXiao: lunar.getYearShengXiao(),
+      jieQi,
+      yi: lunar.getDayYi(),
+      ji: lunar.getDayJi(),
+      zhiXing: lunar.getZhiXing(),
+      festivals
+    };
+  } catch (e) {
+    return null;
+  }
+}
+
+// Short lunar label for a cell: 初一 shows the month (e.g. '正月'), others show day (e.g. '廿九').
+function lunarCellLabel(lunar) {
+  if (!lunar) return '';
+  if (lunar.lunarDay === '初一') return lunar.lunarMonth;
+  return lunar.lunarDay;
+}
 
 // Load holiday data for a year from holiday-cn (GitHub raw, backed by 国务院公告)
 async function loadHolidays(year) {
@@ -2682,6 +2850,23 @@ function renderCalendar() {
   if (yearBtn) yearBtn.textContent = `${calYear}年`;
   if (monthBtn) monthBtn.textContent = `${calMonth + 1}月`;
 
+  // Weekday header (order depends on calStartDow)
+  const wdEl = document.getElementById('calWeekdays');
+  if (wdEl) {
+    const names = ['日','一','二','三','四','五','六'];
+    let html = '';
+    for (let i = 0; i < 7; i++) {
+      const idx = (calStartDow + i) % 7;
+      const isWkend = (idx === 0 || idx === 6);
+      html += `<span class="${isWkend ? 'cal-wkend' : ''}">${names[idx]}</span>`;
+    }
+    wdEl.innerHTML = html;
+  }
+
+  // Start-dow button label
+  const dowBtn = document.getElementById('calStartDowBtn');
+  if (dowBtn) dowBtn.textContent = calStartDow === 1 ? '周一' : '周日';
+
   // Aggregate tasks by deadline date (YYYY-MM-DD)
   const taskCount = {};
   tasks.forEach(t => {
@@ -2695,9 +2880,24 @@ function renderCalendar() {
   const today = new Date();
   const todayKey = dateKey(today.getFullYear(), today.getMonth(), today.getDate());
 
+  // Day-of-year + week number for the current month's 1st (shown in sub-bar)
+  const dayOfYearEl = document.getElementById('calDayOfYear');
+  if (dayOfYearEl) {
+    const firstOfYear = new Date(calYear, 0, 1);
+    const firstOfMonth = new Date(calYear, calMonth, 1);
+    const dayOfYear = Math.round((firstOfMonth - firstOfYear) / 86400000) + 1;
+    // ISO week number of the 1st
+    const iso = new Date(Date.UTC(calYear, calMonth, 1));
+    const dayNum = (iso.getUTCDay() + 6) % 7;
+    iso.setUTCDate(iso.getUTCDate() - dayNum + 3);
+    const firstThursday = new Date(Date.UTC(iso.getUTCFullYear(), 0, 4));
+    const weekNum = 1 + Math.round(((iso - firstThursday) / 86400000 - 3 + ((firstThursday.getUTCDay() + 6) % 7)) / 7);
+    dayOfYearEl.textContent = `第${dayOfYear}天 · 第${weekNum}周`;
+  }
+
   // Load holidays for current and adjacent months' years
   const firstDay = new Date(calYear, calMonth, 1);
-  const startDow = (firstDay.getDay() + 6) % 7; // Monday-first: Sun=6, Mon=0
+  const startDow = (firstDay.getDay() - calStartDow + 7) % 7; // offset to start column
   const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
   const prevYear = calMonth === 0 ? calYear - 1 : calYear;
   const prevMonth = calMonth === 0 ? 11 : calMonth - 1;
@@ -2746,9 +2946,26 @@ function renderCalendar() {
       const countHtml = count > 0 ? `<span class="cal-task-count">${count}</span>` : '';
       // Other-month cells show no number (blank placeholder) to avoid confusion
       const dayNumHtml = cell.other ? '' : `<span class="cal-daynum">${cell.d}</span>`;
+      // Lunar / jieqi / festival labels (computed synchronously from lunar.js)
+      let lunarHtml = '', jieqiHtml = '', festivalHtml = '';
+      if (!cell.other) {
+        const lunar = getLunarInfo(cell.y, cell.m, cell.d);
+        if (lunar) {
+          const lLabel = lunarCellLabel(lunar);
+          if (lLabel) lunarHtml = `<span class="cal-lunar">${lLabel}</span>`;
+          if (lunar.jieQi) jieqiHtml = `<span class="cal-jieqi">${lunar.jieQi}</span>`;
+          // Show festival only if no statutory holiday name is already shown
+          if (!name && lunar.festivals.length > 0) {
+            festivalHtml = `<span class="cal-festival">${escapeHtml(lunar.festivals[0])}</span>`;
+          }
+        }
+      }
       return `<div class="${cls.join(' ')}" data-date="${key}" data-other="${cell.other}">
         ${dayNumHtml}
+        ${lunarHtml}
         ${nameHtml}
+        ${jieqiHtml}
+        ${festivalHtml}
         ${countHtml}
       </div>`;
     }).join('');
@@ -2794,6 +3011,40 @@ function renderDayTasks() {
   const label = `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
   const dow = ['周日','周一','周二','周三','周四','周五','周六'][d.getDay()];
   header.textContent = `${label} · ${dow}`;
+
+  // Lunar / ganzhi / yi-ji detail panel for the target date
+  const detailEl = document.getElementById('calDayDetail');
+  if (detailEl) {
+    const lunar = getLunarInfo(d.getFullYear(), d.getMonth(), d.getDate());
+    if (lunar) {
+      const yiHtml = lunar.yi.length ? lunar.yi.map(x => `<span class="cal-yi">${escapeHtml(x)}</span>`).join('') : '';
+      const jiHtml = lunar.ji.length ? lunar.ji.map(x => `<span class="cal-ji">${escapeHtml(x)}</span>`).join('') : '';
+      const festHtml = lunar.festivals.length
+        ? `<div class="cal-detail-row"><span class="cal-detail-label">节</span><span>${escapeHtml(lunar.festivals.join('、'))}</span></div>`
+        : '';
+      const jieqiHtml = lunar.jieQi
+        ? `<div class="cal-detail-row"><span class="cal-detail-label">气</span><span class="cal-detail-ganzhi">${escapeHtml(lunar.jieQi)}</span></div>`
+        : '';
+      detailEl.innerHTML = `
+        <div class="cal-detail-row">
+          <span class="cal-detail-label">历</span>
+          <span>农历 ${escapeHtml(lunar.lunarMonth)}月${escapeHtml(lunar.lunarDay)} · <span class="cal-detail-ganzhi">${escapeHtml(lunar.lunarFull)}</span> · ${escapeHtml(lunar.shengXiao)}年</span>
+        </div>
+        ${jieqiHtml}
+        ${festHtml}
+        <div class="cal-detail-row">
+          <span class="cal-detail-label">宜</span>
+          <span class="cal-detail-yiji">${yiHtml || '<span class="cal-ji">无</span>'}</span>
+        </div>
+        <div class="cal-detail-row">
+          <span class="cal-detail-label">忌</span>
+          <span class="cal-detail-yiji">${jiHtml || '<span class="cal-ji">无</span>'}</span>
+        </div>
+      `;
+    } else {
+      detailEl.innerHTML = '';
+    }
+  }
 
   const dayTasks = tasks.filter(t => {
     if (!t.deadline) return false;
@@ -2844,6 +3095,28 @@ function showCalPicker(type) {
   });
 }
 
+// Render the holiday-schedule dropdown for the current year (from holiday-cn).
+async function renderHolidayPanel() {
+  const panel = document.getElementById('calHolidayPanel');
+  if (!panel) return;
+  const map = await loadHolidays(calYear);
+  const entries = Object.entries(map || {})
+    .filter(([, v]) => v && v.name)
+    .sort((a, b) => a[0].localeCompare(b[0]));
+  if (entries.length === 0) {
+    panel.innerHTML = `<div class="hp-empty">${calYear}年放假安排加载中…</div>`;
+    return;
+  }
+  panel.innerHTML = entries.map(([key, v]) => {
+    const [y, m, d] = key.split('-').map(Number);
+    const dateStr = `${m}月${d}日`;
+    const tag = v.isOffDay
+      ? `<span class="hp-tag rest">休</span>`
+      : `<span class="hp-tag work">补</span>`;
+    return `<div class="hp-item"><span class="hp-date">${dateStr}</span><span class="hp-name">${escapeHtml(v.name)}</span>${tag}</div>`;
+  }).join('');
+}
+
 function bindCalendarEvents() {
   const prev = document.getElementById('calPrev');
   const next = document.getElementById('calNext');
@@ -2851,6 +3124,9 @@ function bindCalendarEvents() {
   const yearBtn = document.getElementById('calYearBtn');
   const monthBtn = document.getElementById('calMonthBtn');
   const picker = document.getElementById('calPicker');
+  const startDowBtn = document.getElementById('calStartDowBtn');
+  const holidayBtn = document.getElementById('calHolidayBtn');
+  const holidayPanel = document.getElementById('calHolidayPanel');
   if (prev) prev.addEventListener('click', () => { calMonth--; if (calMonth < 0) { calMonth = 11; calYear--; } calSelectedDate = null; renderCalendar(); });
   if (next) next.addEventListener('click', () => { calMonth++; if (calMonth > 11) { calMonth = 0; calYear++; } calSelectedDate = null; renderCalendar(); });
   if (todayBtn) todayBtn.addEventListener('click', () => {
@@ -2862,10 +3138,26 @@ function bindCalendarEvents() {
   });
   if (yearBtn) yearBtn.addEventListener('click', (e) => { e.stopPropagation(); showCalPicker('year'); });
   if (monthBtn) monthBtn.addEventListener('click', (e) => { e.stopPropagation(); showCalPicker('month'); });
+  // Toggle week start day (Monday / Sunday)
+  if (startDowBtn) startDowBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    calStartDow = calStartDow === 1 ? 0 : 1;
+    renderCalendar();
+  });
+  // Toggle holiday-schedule dropdown
+  if (holidayBtn && holidayPanel) holidayBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const willOpen = holidayPanel.style.display !== 'block';
+    holidayPanel.style.display = willOpen ? 'block' : 'none';
+    if (willOpen) renderHolidayPanel();
+  });
   // Close picker on outside click
   document.addEventListener('click', (e) => {
     if (picker && !e.target.closest('#calTitle') && !e.target.closest('#calPicker')) {
       picker.style.display = 'none';
+    }
+    if (holidayPanel && !e.target.closest('#calHolidayBtn') && !e.target.closest('#calHolidayPanel')) {
+      holidayPanel.style.display = 'none';
     }
   });
 }

@@ -1650,6 +1650,14 @@ fn main() {
                 .get_webview_window("main")
                 .expect("main window not found");
 
+            // Windows 必须显示在任务栏，否则最小化后无法找回。
+            // tauri.conf.json 里 skipTaskbar:true 是为 macOS 菜单栏 widget 设计的；
+            // Windows 没有菜单栏图标机制，窗口必须出现在任务栏。
+            #[cfg(target_os = "windows")]
+            {
+                let _ = window.set_skip_taskbar(false);
+            }
+
             let _ = window.set_focus();
             app.manage(AppState {
                 main_window: Mutex::new(Some(window)),

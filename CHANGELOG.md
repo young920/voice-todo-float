@@ -16,9 +16,25 @@ single commit on `main`.
 
 ## Planned (backlog)
 
-- 1.1.0: bookmark import/export (Chrome/Firefox HTML bookmarks → favorites)
-- 1.1.0: notification reminder X minutes before `截止时间`
 - 1.2.0: per-category color themes
+
+---
+
+## [1.2.0] - 2026-10-09
+
+### Added
+- **日历视图大幅增强（参照黄历 App 设计）。**
+  - **农历**：每个日期格下方显示农历日（初一显示农历月份），数据源为 `lunar-javascript`（MIT 开源、纯前端离线计算、免费无 key、无网络依赖）。
+  - **节气**：节气日以金色标注（如「寒露」「霜降」）。
+  - **节日**：显示传统节日（重阳节、世界邮政日等），与法定节假日互补。
+  - **黄历宜忌**：选中日期后，详情面板显示农历、干支（丙午年戊戌月丙辰日）、生肖、宜/忌事项。
+  - **起始日切换**：工具栏新增「周一/周日」按钮，切换每周起始日，星期表头与格子同步重排。
+  - **放假安排下拉**：工具栏新增「放假」按钮，下拉展示全年法定节假日与调休补班（休/补标签）。
+  - **第X天·第X周**：工具栏显示当前月首日的年内天数与 ISO 周数。
+
+### Fixed
+- **Windows 任务栏找不到应用（最小化后消失）。** 根因是 `tauri.conf.json` 的 `skipTaskbar: true`（对 Mac 菜单栏 widget 合理，但 Windows 无此机制）。现改为在 `setup()` 中按平台处理：Windows 上 `set_skip_taskbar(false)` 让窗口显示在任务栏，Mac 保持 `true`。
+- **日历底部格子被图例栏遮挡。** 调整 `.cal-grid` 为 `grid-auto-rows: 1fr` + 格子自适应高度，确保最后一行日期完整可见。
 
 ---
 

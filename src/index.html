@@ -2833,6 +2833,20 @@ async function loadHolidays(year) {
   }
 }
 
+// Preload holiday data for a broad range of years so every year's 休/补 tags
+// appear instantly when the user navigates the calendar — no button click needed.
+// Holiday schedules are published years ahead (国务院公告), so this is stable data.
+function preloadAllHolidays() {
+  const now = new Date();
+  const start = 2019;            // holiday-cn data begins around here
+  const end = now.getFullYear() + 3; // cover current + next few years
+  for (let y = start; y <= end; y++) {
+    if (!holidayCache[y]) {
+      loadHolidays(y).catch(() => {});
+    }
+  }
+}
+
 function getHolidayInfo(map, y, m, d) {
   return map ? map[dateKey(y, m, d)] : null;
 }
@@ -3542,6 +3556,7 @@ window.addEventListener('DOMContentLoaded', () => {
   loadTasks();
   loadFavorites();
   loadTags();
+  preloadAllHolidays();
 
   const dragRegion = document.getElementById('dragRegion');
   if (dragRegion) {

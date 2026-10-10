@@ -1079,15 +1079,36 @@ body.calendar-mode .btn-search { display: none; }
   padding-left: 2px;
 }
 
+/* Anniversary banner in the day-tasks area (强化显示今天是什么日子) */
+.cal-day-ann-banner {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  align-items: center;
+  padding: 5px 8px;
+  margin-bottom: 6px;
+  background: var(--cinnabar-light);
+  border-left: 3px solid var(--cinnabar);
+  border-radius: var(--radius);
+}
+.cal-day-ann-item {
+  font-size: 11px;
+  color: var(--cinnabar);
+  font-weight: 600;
+}
+
 /* Anniversary modal */
 .ann-modal-overlay {
   position: fixed;
   inset: 0;
   z-index: 2000;
   background: rgba(0,0,0,0.25);
-  display: flex;
+  display: none;
   align-items: center;
   justify-content: center;
+}
+.ann-modal-overlay.open {
+  display: flex;
 }
 .ann-modal {
   width: 300px;
@@ -1137,6 +1158,11 @@ body.calendar-mode .btn-search { display: none; }
   font-family: inherit;
 }
 .ann-input:focus { outline: none; border-color: var(--cinnabar); }
+.ann-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
 .ann-form-row {
   display: flex;
   gap: 6px;
@@ -1155,6 +1181,7 @@ body.calendar-mode .btn-search { display: none; }
 .ann-form-actions {
   display: flex;
   justify-content: flex-end;
+  margin-top: 2px;
 }
 .ann-btn {
   padding: 5px 14px;
@@ -3038,6 +3065,7 @@ let calHolidayPanelOpen = false;
 const holidayCache = {}; // { year: { 'YYYY-MM-DD': { name, isOffDay } } }
 let anniversaries = []; // 纪念日列表
 let annModalOpen = false;
+let isSavingAnn = false; // 防重复提交标志
 
 function pad2(n) { return String(n).padStart(2, '0'); }
 function dateKey(y, m, d) { return `${y}-${pad2(m + 1)}-${pad2(d)}`; }
@@ -3478,18 +3506,30 @@ function renderDayTasks() {
     return dateKey(td.getFullYear(), td.getMonth(), td.getDate()) === target;
   }).sort(sortByPriority);
 
-  if (dayTasks.length === 0) {
+  // 当天纪念日红条（强化显示今天是什么日子）
+  const anns = getAnniversariesForDate(d.getFullYear(), d.getMonth(), d.getDate());
+  let annBanner = '';
+  if (anns.length > 0) {
+    annBanner = `<div class="cal-day-ann-banner">${anns.map(a =>
+      `<span class="cal-day-ann-item">${escapeHtml(a.name)}${a.note ? ' · ' + escapeHtml(a.note) : ''}</span>`
+    ).join('')}</div>`;
+  }
+
+  if (dayTasks.length === 0 && !annBanner) {
     body.innerHTML = `<div class="cal-day-tasks-empty">暂无待办</div>`;
     return;
   }
-  body.innerHTML = dayTasks.map(t => {
-    const prioClass = { '高': 'p-high', '中': 'p-medium', '低': 'p-low' }[(t.priority || '').trim()] || 'p-medium';
-    const done = t.status === '已完成' ? 'done' : '';
-    return `<div class="cal-day-task-item ${done}">
-      <span class="cal-day-task-prio ${prioClass}"></span>
-      <span class="cal-day-task-name">${escapeHtml(t.name)}</span>
-    </div>`;
-  }).join('');
+  const tasksHtml = dayTasks.length === 0
+    ? `<div class="cal-day-tasks-empty">暂无待办</div>`
+    : dayTasks.map(t => {
+        const prioClass = { '高': 'p-high', '中': 'p-medium', '低': 'p-low' }[(t.priority || '').trim()] || 'p-medium';
+        const done = t.status === '已完成' ? 'done' : '';
+        return `<div class="cal-day-task-item ${done}">
+          <span class="cal-day-task-prio ${prioClass}"></span>
+          <span class="cal-day-task-name">${escapeHtml(t.name)}</span>
+        </div>`;
+      }).join('');
+  body.innerHTML = annBanner + tasksHtml;
 }
 
 function showCalPicker(type) {
@@ -3705,6 +3745,7 @@ function renderAnnList() {
 }
 
 async function saveAnniversary() {
+  if (isSavingAnn) return; // 防止重复点击创建多条
   const nameEl = document.getElementById('annName');
   const dateTypeEl = document.getElementById('annDateType');
   const monthEl = document.getElementById('annMonth');
@@ -3717,12 +3758,18 @@ async function saveAnniversary() {
   const day = dayEl ? parseInt(dayEl.value, 10) : null;
   const dateType = dateTypeEl ? dateTypeEl.value : '农历';
   const annType = typeEl ? typeEl.value : '纪念日';
-  const note = noteEl ? noteEl.value : '';
+  const note = noteEl ? noteEl.value.trim() : '';
+  isSavingAnn = true;
+  const addBtn = document.getElementById('annAddBtn');
+  if (addBtn) { addBtn.disabled = true; addBtn.textContent = '保存中…'; }
   try {
     const data = await invoke('create_anniversary', {
       name, dateType, month, day, annType, note
     });
     if (data.code === 0) {
+      // 清空表单，避免重复保存残留
+      if (nameEl) nameEl.value = '';
+      if (noteEl) noteEl.value = '';
       showToast('已添加纪念日');
       await loadAnniversaries();
       renderAnnList();
@@ -3732,6 +3779,9 @@ async function saveAnniversary() {
   } catch (e) {
     console.error('save anniversary error:', e);
     showToast('添加失败');
+  } finally {
+    isSavingAnn = false;
+    if (addBtn) { addBtn.disabled = false; addBtn.textContent = '保存'; }
   }
 }
 

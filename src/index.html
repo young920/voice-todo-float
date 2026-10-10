@@ -1066,6 +1066,163 @@ body.calendar-mode .btn-search { display: none; }
 .cal-mini-btn:hover { color: var(--cinnabar); border-color: var(--cinnabar); }
 .cal-mini-btn.active { background: var(--cinnabar); border-color: var(--cinnabar); color: var(--paper); }
 
+/* Anniversary cell label */
+.cal-anniversary {
+  display: block;
+  font-size: 9px;
+  line-height: 1.3;
+  color: var(--cinnabar);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  padding-left: 2px;
+}
+
+/* Anniversary modal */
+.ann-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  background: rgba(0,0,0,0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ann-modal {
+  width: 300px;
+  max-height: 80vh;
+  background: var(--paper-light);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-serif);
+}
+.ann-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+  color: var(--ink);
+}
+.ann-modal-close {
+  border: none;
+  background: none;
+  font-size: 18px;
+  color: var(--ink-muted);
+  cursor: pointer;
+  line-height: 1;
+}
+.ann-modal-close:hover { color: var(--cinnabar); }
+.ann-modal-body {
+  padding: 12px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ann-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 12px;
+  font-family: inherit;
+}
+.ann-input:focus { outline: none; border-color: var(--cinnabar); }
+.ann-form-row {
+  display: flex;
+  gap: 6px;
+}
+.ann-select {
+  flex: 1;
+  padding: 5px 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 12px;
+  font-family: inherit;
+}
+.ann-select:focus { outline: none; border-color: var(--cinnabar); }
+.ann-form-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+.ann-btn {
+  padding: 5px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--paper-light);
+  color: var(--ink-light);
+  font-size: 12px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.ann-btn-primary {
+  background: var(--cinnabar);
+  border-color: var(--cinnabar);
+  color: var(--paper);
+}
+.ann-btn-primary:hover { opacity: 0.9; }
+.ann-list {
+  border-top: 1px solid var(--border-light);
+  padding-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ann-list-empty {
+  font-size: 12px;
+  color: var(--ink-muted);
+  text-align: center;
+  padding: 12px 0;
+}
+.ann-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius);
+  background: var(--paper);
+}
+.ann-item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.ann-item-name {
+  font-size: 13px;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ann-item-date {
+  font-size: 11px;
+  color: var(--ink-muted);
+}
+.ann-item-del {
+  border: none;
+  background: none;
+  color: var(--ink-muted);
+  font-size: 15px;
+  cursor: pointer;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.ann-item-del:hover { color: var(--cinnabar); }
+
 /* Holiday schedule panel (dropdown under sub-bar) */
 .cal-holiday-panel {
   display: none;
@@ -1657,6 +1814,7 @@ body.favorites-mode .btn-add { display: flex; }
         <div class="cal-sub-actions">
           <button class="cal-mini-btn" id="calStartDowBtn" title="切换每周起始日">周一</button>
           <button class="cal-mini-btn" id="calHolidayBtn" title="放假安排">放假</button>
+          <button class="cal-mini-btn" id="calAnnBtn" title="纪念日">纪念日</button>
         </div>
       </div>
       <div class="cal-picker" id="calPicker" style="display:none;"></div>
@@ -1675,6 +1833,40 @@ body.favorites-mode .btn-add { display: flex; }
         <div class="cal-day-tasks-header" id="calDayTasksHeader">当日待办</div>
         <div class="cal-day-tasks-body" id="calDayTasksBody"></div>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- 纪念日弹窗 -->
+<div class="ann-modal-overlay" id="annModalOverlay" style="display:none;">
+  <div class="ann-modal">
+    <div class="ann-modal-header">
+      <span class="ann-modal-title" id="annModalTitle">纪念日</span>
+      <button class="ann-modal-close" id="annModalClose" title="关闭">×</button>
+    </div>
+    <div class="ann-modal-body">
+      <div class="ann-form" id="annForm">
+        <input class="ann-input" id="annName" type="text" placeholder="名称（如：妈妈生日）" maxlength="40" />
+        <div class="ann-form-row">
+          <select class="ann-select" id="annDateType">
+            <option value="农历">农历</option>
+            <option value="阳历">阳历</option>
+          </select>
+          <select class="ann-select" id="annMonth"></select>
+          <select class="ann-select" id="annDay"></select>
+          <select class="ann-select" id="annType">
+            <option value="纪念日">纪念日</option>
+            <option value="生日">生日</option>
+            <option value="节日">节日</option>
+            <option value="其他">其他</option>
+          </select>
+        </div>
+        <input class="ann-input" id="annNote" type="text" placeholder="备注（可选）" maxlength="60" />
+        <div class="ann-form-actions">
+          <button class="ann-btn ann-btn-primary" id="annAddBtn">保存</button>
+        </div>
+      </div>
+      <div class="ann-list" id="annList"></div>
     </div>
   </div>
 </div>
@@ -1862,7 +2054,7 @@ async function loadTasks(opts = {}) {
 async function refreshAll() {
   showLoading();
   try {
-    await Promise.all([loadTasks({ silent: true }), loadFavorites({ silent: true }), loadTags()]);
+    await Promise.all([loadTasks({ silent: true }), loadFavorites({ silent: true }), loadTags(), loadAnniversaries()]);
   } finally {
     hideLoading();
   }
@@ -1906,6 +2098,23 @@ async function loadTags() {
     tags = [];
   }
   renderFavorites();
+}
+
+async function loadAnniversaries() {
+  try {
+    const data = await invoke('get_anniversaries');
+    if (data.code === 0 && data.data) {
+      anniversaries = data.data;
+      console.log('loaded ' + anniversaries.length + ' anniversaries');
+    } else {
+      anniversaries = [];
+      console.log('load anniversaries failed: ' + (data.msg || 'unknown'));
+    }
+  } catch (error) {
+    console.error('Load anniversaries error:', error);
+    anniversaries = [];
+  }
+  renderCalendar();
 }
 
 function switchModule(module) {
@@ -2827,6 +3036,8 @@ let calSelectedDate = null; // 'YYYY-MM-DD' or null
 let calStartDow = 1; // 1 = Monday-first, 0 = Sunday-first
 let calHolidayPanelOpen = false;
 const holidayCache = {}; // { year: { 'YYYY-MM-DD': { name, isOffDay } } }
+let anniversaries = []; // 纪念日列表
+let annModalOpen = false;
 
 function pad2(n) { return String(n).padStart(2, '0'); }
 function dateKey(y, m, d) { return `${y}-${pad2(m + 1)}-${pad2(d)}`; }
@@ -2940,6 +3151,28 @@ function lunarCellLabel(lunar) {
   if (!lunar) return '';
   if (lunar.lunarDay === '初一') return `${lunar.lunarMonth} · ${lunar.lunarDay}`;
   return lunar.lunarDay;
+}
+
+// Return the list of anniversaries that fall on the given solar date (y,m,d).
+// 农历纪念日: get the lunar month/day of this solar date and match.
+// 阳历纪念日: match month/day directly.
+function getAnniversariesForDate(y, m, d) {
+  const result = [];
+  anniversaries.forEach(a => {
+    if (a.month == null || a.day == null) return;
+    if (a.date_type === '阳历') {
+      if (a.month === m + 1 && a.day === d) result.push(a);
+    } else {
+      // 农历: 获取该阳历日期的农历月/日，与纪念日的农历月/日匹配
+      if (typeof Solar === 'undefined') return;
+      try {
+        const solar = Solar.fromYmd(y, m + 1, d);
+        const lunar = solar.getLunar();
+        if (lunar.getMonth() === a.month && lunar.getDay() === a.day) result.push(a);
+      } catch (e) { /* invalid lunar date, skip */ }
+    }
+  });
+  return result;
 }
 
 // Load holiday data for a year from holiday-cn (GitHub raw, backed by 国务院公告)
@@ -3110,7 +3343,7 @@ function renderCalendar() {
       // 非当月格子也显示日期数字（由 .other-month 淡化），避免整排空白
       const dayNumHtml = `<span class="cal-daynum">${cell.d}</span>`;
       // Lunar / jieqi / festival labels (computed synchronously from lunar.js)
-      let lunarHtml = '', jieqiHtml = '', festivalHtml = '';
+      let lunarHtml = '', jieqiHtml = '', festivalHtml = '', annHtml = '';
       {
         const lunar = getLunarInfo(cell.y, cell.m, cell.d);
         if (lunar) {
@@ -3125,12 +3358,22 @@ function renderCalendar() {
           }
         }
       }
+      // Anniversary labels (农历/阳历纪念日)
+      {
+        const anns = getAnniversariesForDate(cell.y, cell.m, cell.d);
+        if (anns.length > 0) {
+          annHtml = anns.slice(0, 2).map(a =>
+            `<span class="cal-anniversary" title="${escapeHtml(a.name)}${a.note ? '：' + escapeHtml(a.note) : ''}">${escapeHtml(a.name)}</span>`
+          ).join('');
+        }
+      }
       return `<div class="${cls.join(' ')}" data-date="${key}" data-other="${cell.other}">
         ${dayNumHtml}
         ${lunarHtml}
         ${nameHtml}
         ${jieqiHtml}
         ${festivalHtml}
+        ${annHtml}
         ${countHtml}
       </div>`;
     }).join('');
@@ -3344,6 +3587,46 @@ function bindCalendarEvents() {
     holidayPanel.style.display = willOpen ? 'block' : 'none';
     if (willOpen) renderHolidayPanel();
   });
+  // Open anniversary modal
+  const annBtn = document.getElementById('calAnnBtn');
+  if (annBtn) annBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    openAnnModal();
+  });
+  // Anniversary modal controls
+  const annOverlay = document.getElementById('annModalOverlay');
+  const annClose = document.getElementById('annModalClose');
+  const annAddBtn = document.getElementById('annAddBtn');
+  const annDateType = document.getElementById('annDateType');
+  const annMonth = document.getElementById('annMonth');
+  const annDay = document.getElementById('annDay');
+  if (annClose) annClose.addEventListener('click', closeAnnModal);
+  if (annOverlay) annOverlay.addEventListener('click', (e) => { if (e.target === annOverlay) closeAnnModal(); });
+  if (annAddBtn) annAddBtn.addEventListener('click', saveAnniversary);
+  // Populate month/day selects and keep day count in sync with month
+  if (annMonth) {
+    for (let m = 1; m <= 12; m++) {
+      const opt = document.createElement('option');
+      opt.value = m; opt.textContent = m + '月';
+      annMonth.appendChild(opt);
+    }
+  }
+  if (annDay) {
+    const fillDays = () => {
+      const m = parseInt(annMonth.value, 10);
+      const days = new Date(2024, m, 0).getDate(); // 2024 leap-year-safe for month lengths
+      const cur = annDay.value;
+      annDay.innerHTML = '';
+      for (let d = 1; d <= days; d++) {
+        const opt = document.createElement('option');
+        opt.value = d; opt.textContent = d + '日';
+        annDay.appendChild(opt);
+      }
+      if (cur) annDay.value = cur;
+    };
+    annMonth.addEventListener('change', fillDays);
+    fillDays();
+  }
   // Close picker on outside click
   document.addEventListener('click', (e) => {
     if (picker && !e.target.closest('#calTitle') && !e.target.closest('#calPicker')) {
@@ -3353,6 +3636,119 @@ function bindCalendarEvents() {
       holidayPanel.style.display = 'none';
     }
   });
+}
+
+// ---- Anniversary modal logic ----
+function openAnnModal() {
+  const overlay = document.getElementById('annModalOverlay');
+  if (!overlay) return;
+  annModalOpen = true;
+  overlay.style.display = 'flex';
+  // Reset form
+  const nameEl = document.getElementById('annName');
+  const noteEl = document.getElementById('annNote');
+  const typeEl = document.getElementById('annType');
+  const dateTypeEl = document.getElementById('annDateType');
+  const monthEl = document.getElementById('annMonth');
+  const dayEl = document.getElementById('annDay');
+  if (nameEl) nameEl.value = '';
+  if (noteEl) noteEl.value = '';
+  if (typeEl) typeEl.value = '纪念日';
+  if (dateTypeEl) dateTypeEl.value = '农历';
+  if (monthEl) monthEl.value = '1';
+  if (dayEl) dayEl.value = '1';
+  if (monthEl && dayEl) {
+    const days = new Date(2024, 1, 0).getDate();
+    dayEl.innerHTML = '';
+    for (let d = 1; d <= days; d++) {
+      const opt = document.createElement('option');
+      opt.value = d; opt.textContent = d + '日';
+      dayEl.appendChild(opt);
+    }
+  }
+  renderAnnList();
+  if (nameEl) setTimeout(() => nameEl.focus(), 50);
+}
+
+function closeAnnModal() {
+  const overlay = document.getElementById('annModalOverlay');
+  if (!overlay) return;
+  annModalOpen = false;
+  overlay.style.display = 'none';
+}
+
+function renderAnnList() {
+  const list = document.getElementById('annList');
+  if (!list) return;
+  if (anniversaries.length === 0) {
+    list.innerHTML = '<div class="ann-list-empty">还没有纪念日，添加一个吧</div>';
+    return;
+  }
+  list.innerHTML = anniversaries.map(a => {
+    const dateStr = `${a.date_type || '农历'} ${a.month || '?'}月${a.day || '?'}日`;
+    const typeTag = a.ann_type ? `<span class="ann-item-date">${escapeHtml(a.ann_type)}</span>` : '';
+    return `<div class="ann-item" data-id="${a.id}">
+      <div class="ann-item-info">
+        <span class="ann-item-name">${escapeHtml(a.name)}</span>
+        <span class="ann-item-date">${escapeHtml(dateStr)}${a.note ? ' · ' + escapeHtml(a.note) : ''}</span>
+      </div>
+      ${typeTag}
+      <button class="ann-item-del" title="删除">×</button>
+    </div>`;
+  }).join('');
+  list.querySelectorAll('.ann-item-del').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.closest('.ann-item').getAttribute('data-id');
+      deleteAnniversary(id);
+    });
+  });
+}
+
+async function saveAnniversary() {
+  const nameEl = document.getElementById('annName');
+  const dateTypeEl = document.getElementById('annDateType');
+  const monthEl = document.getElementById('annMonth');
+  const dayEl = document.getElementById('annDay');
+  const typeEl = document.getElementById('annType');
+  const noteEl = document.getElementById('annNote');
+  const name = (nameEl && nameEl.value || '').trim();
+  if (!name) { showToast('请输入纪念日名称'); return; }
+  const month = monthEl ? parseInt(monthEl.value, 10) : null;
+  const day = dayEl ? parseInt(dayEl.value, 10) : null;
+  const dateType = dateTypeEl ? dateTypeEl.value : '农历';
+  const annType = typeEl ? typeEl.value : '纪念日';
+  const note = noteEl ? noteEl.value : '';
+  try {
+    const data = await invoke('create_anniversary', {
+      name, dateType, month, day, annType, note
+    });
+    if (data.code === 0) {
+      showToast('已添加纪念日');
+      await loadAnniversaries();
+      renderAnnList();
+    } else {
+      showToast('添加失败：' + (data.msg || '未知错误'));
+    }
+  } catch (e) {
+    console.error('save anniversary error:', e);
+    showToast('添加失败');
+  }
+}
+
+async function deleteAnniversary(id) {
+  try {
+    const data = await invoke('delete_anniversary', { id });
+    if (data.code === 0) {
+      showToast('已删除');
+      await loadAnniversaries();
+      renderAnnList();
+    } else {
+      showToast('删除失败：' + (data.msg || '未知错误'));
+    }
+  } catch (e) {
+    console.error('delete anniversary error:', e);
+    showToast('删除失败');
+  }
 }
 
 function bindDynamicEvents() {

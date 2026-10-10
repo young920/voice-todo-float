@@ -31,6 +31,8 @@ struct Config {
     favorites_table_id: Option<String>,
     #[serde(rename = "tags_table_id")]
     tags_table_id: Option<String>,
+    #[serde(rename = "anniversary_table_id")]
+    anniversary_table_id: Option<String>,
 }
 
 // Bundled defaults — applied when a field is missing or empty in the user's
@@ -47,6 +49,7 @@ const DEFAULT_TABLE_ID: &str = "tblC5qyGBp6u3HcK";
 const DEFAULT_PROFILE: &str = "cli_a976ca0e1c39dbda";
 const DEFAULT_FAVORITES_TABLE_ID: &str = "tblMWc2mZ5kVLv4L";
 const DEFAULT_TAGS_TABLE_ID: &str = "tblfXvTCLxXFGRlV";
+const DEFAULT_ANNIVERSARY_TABLE_ID: &str = "tblAt0NJ5gaMYiFB";
 
 impl Config {
     fn load() -> Result<Self, String> {
@@ -89,6 +92,15 @@ impl Config {
             config.tags_table_id = Some(DEFAULT_TAGS_TABLE_ID.to_string());
             changed = true;
         }
+        if config
+            .anniversary_table_id
+            .as_ref()
+            .map(|s| s.trim().is_empty())
+            .unwrap_or(true)
+        {
+            config.anniversary_table_id = Some(DEFAULT_ANNIVERSARY_TABLE_ID.to_string());
+            changed = true;
+        }
         if changed {
             let serialized = serde_json::to_string_pretty(&config)
                 .map_err(|e| format!("序列化配置失败: {}", e))?;
@@ -106,6 +118,12 @@ impl Config {
 
     fn tags_table_id(&self) -> Option<&String> {
         self.tags_table_id.as_ref().filter(|s| !s.trim().is_empty())
+    }
+
+    fn anniversary_table_id(&self) -> Option<&String> {
+        self.anniversary_table_id
+            .as_ref()
+            .filter(|s| !s.trim().is_empty())
     }
 }
 
@@ -212,7 +230,8 @@ fn ensure_config() -> Result<Config, String> {
         "table_id": DEFAULT_TABLE_ID,
         "profile": DEFAULT_PROFILE,
         "favorites_table_id": DEFAULT_FAVORITES_TABLE_ID,
-        "tags_table_id": DEFAULT_TAGS_TABLE_ID
+        "tags_table_id": DEFAULT_TAGS_TABLE_ID,
+        "anniversary_table_id": DEFAULT_ANNIVERSARY_TABLE_ID
     });
     let content =
         serde_json::to_string_pretty(&template).map_err(|e| format!("序列化配置失败: {}", e))?;
@@ -314,6 +333,19 @@ struct Tag {
     name: String,
     category: String,
     color: String,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+struct Anniversary {
+    id: String,
+    name: String,
+    #[serde(rename = "date_type")]
+    date_type: String,
+    month: Option<i64>,
+    day: Option<i64>,
+    #[serde(rename = "type")]
+    ann_type: String,
+    note: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -630,6 +662,51 @@ fn fields_map_to_tag(record_id: String, fields_map: HashMap<String, serde_json::
         name: get_str("标签名"),
         category: get_str("分类"),
         color: get_str("颜色"),
+    }
+}
+
+fn fields_map_to_anniversary(
+    record_id: String,
+    fields_map: HashMap<String, serde_json::Value>,
+) -> Anniversary {
+    let get_str = |key: &str| -> String {
+        fields_map
+            .get(key)
+            .and_then(|v| {
+                if v.is_string() {
+                    v.as_str().map(|s| s.to_string())
+                } else if v.is_array() && v.as_array().map(|a| a.len()) == Some(1) {
+                    v.as_array()
+                        .and_then(|a| a.first())
+                        .and_then(|f| f.as_str().map(|s| s.to_string()))
+                } else {
+                    None
+                }
+            })
+            .unwrap_or_default()
+    };
+    let get_num = |key: &str| -> Option<i64> {
+        fields_map.get(key).and_then(|v| {
+            if v.is_number() {
+                v.as_i64()
+            } else if v.is_array() && v.as_array().map(|a| a.len()) == Some(1) {
+                v.as_array()
+                    .and_then(|a| a.first())
+                    .and_then(|f| f.as_i64())
+            } else {
+                None
+            }
+        })
+    };
+
+    Anniversary {
+        id: record_id,
+        name: get_str("名称"),
+        date_type: get_str("日期类型"),
+        month: get_num("月份"),
+        day: get_num("日期"),
+        ann_type: get_str("类型"),
+        note: get_str("备注"),
     }
 }
 
@@ -1526,6 +1603,184 @@ fn delete_task(state: tauri::State<AppState>, id: String) -> ApiResponse<serde_j
 }
 
 #[tauri::command]
+fn get_anniversaries(state: tauri::State<AppState>) -> ApiResponse<Vec<Anniversary>> {
+    let config = &state.config;
+    let table_id = match config.anniversary_table_id() {
+        Some(t) => t.clone(),
+        None => return ApiResponse::err("未配置纪念日表"),
+    };
+    let args = vec![
+        "--format".to_string(),
+        "json".to_string(),
+        "base".to_string(),
+        "+record-list".to_string(),
+        "--base-token".to_string(),
+        config.base_token.clone(),
+        "--table-id".to_string(),
+        table_id,
+        "--limit".to_string(),
+        "200".to_string(),
+    ];
+
+    let output = match run_lark_cli(&config.profile, &args) {
+        Ok(o) => o,
+        Err(e) => return ApiResponse::err(e),
+    };
+
+    let resp: LarkResponse<RecordListData> = match serde_json::from_str(&output) {
+        Ok(r) => r,
+        Err(e) => return ApiResponse::err(format!("解析响应失败: {}\n{}", e, output)),
+    };
+
+    if !resp.ok {
+        return ApiResponse::err(
+            resp.error
+                .map(|e| e.message)
+                .unwrap_or_else(|| "获取纪念日失败".to_string()),
+        );
+    }
+
+    let raw = match resp.data {
+        Some(d) => d,
+        None => return ApiResponse::ok(vec![]),
+    };
+
+    let mut anniversaries = Vec::new();
+    for (idx, row) in raw.data.iter().enumerate() {
+        let record_id = raw.record_id_list.get(idx).cloned().unwrap_or_default();
+        let mut fields_map: HashMap<String, serde_json::Value> = HashMap::new();
+        for (field_idx, field_name) in raw.fields.iter().enumerate() {
+            if let Some(val) = row.get(field_idx) {
+                fields_map.insert(field_name.clone(), val.clone());
+            }
+        }
+        anniversaries.push(fields_map_to_anniversary(record_id, fields_map));
+    }
+
+    ApiResponse::ok(anniversaries)
+}
+
+#[tauri::command]
+fn create_anniversary(
+    state: tauri::State<AppState>,
+    name: String,
+    date_type: String,
+    month: Option<i64>,
+    day: Option<i64>,
+    ann_type: String,
+    note: Option<String>,
+) -> ApiResponse<serde_json::Value> {
+    if name.trim().is_empty() {
+        return ApiResponse::err("纪念日名称不能为空");
+    }
+    let config = &state.config;
+    let table_id = match config.anniversary_table_id() {
+        Some(t) => t.clone(),
+        None => return ApiResponse::err("未配置纪念日表"),
+    };
+
+    let mut fields = vec!["名称", "日期类型", "类型"];
+    let mut row: Vec<serde_json::Value> = vec![
+        name.trim().into(),
+        date_type.into(),
+        ann_type.into(),
+    ];
+    if let Some(m) = month {
+        fields.push("月份");
+        row.push(m.into());
+    }
+    if let Some(d) = day {
+        fields.push("日期");
+        row.push(d.into());
+    }
+    if let Some(n) = note {
+        if !n.trim().is_empty() {
+            fields.push("备注");
+            row.push(n.trim().into());
+        }
+    }
+
+    let json_data = serde_json::json!({ "fields": fields, "rows": [row] });
+    let (json_file, path_str) = tmp_json_path("batch");
+
+    if let Err(e) = std::fs::write(&json_file, json_data.to_string()) {
+        return ApiResponse::err(format!("写入临时文件失败: {}", e));
+    }
+    let _guard = TmpGuard::new(json_file.clone());
+
+    let args = vec![
+        "base".to_string(),
+        "+record-batch-create".to_string(),
+        "--base-token".to_string(),
+        config.base_token.clone(),
+        "--table-id".to_string(),
+        table_id,
+        "--json".to_string(),
+        format!("@{}", path_str),
+    ];
+
+    let output = match run_lark_cli(&config.profile, &args) {
+        Ok(o) => o,
+        Err(e) => return ApiResponse::err(e),
+    };
+
+    let resp: LarkResponse<RecordListData> = match serde_json::from_str(&output) {
+        Ok(r) => r,
+        Err(e) => return ApiResponse::err(format!("解析响应失败: {}\n{}", e, output)),
+    };
+
+    if !resp.ok {
+        return ApiResponse::err(
+            resp.error
+                .map(|e| e.message)
+                .unwrap_or_else(|| "创建纪念日失败".to_string()),
+        );
+    }
+
+    ApiResponse::ok(serde_json::json!({ "created": true }))
+}
+
+#[tauri::command]
+fn delete_anniversary(state: tauri::State<AppState>, id: String) -> ApiResponse<serde_json::Value> {
+    let config = &state.config;
+    let table_id = match config.anniversary_table_id() {
+        Some(t) => t.clone(),
+        None => return ApiResponse::err("未配置纪念日表"),
+    };
+    let args = vec![
+        "base".to_string(),
+        "+record-delete".to_string(),
+        "--base-token".to_string(),
+        config.base_token.clone(),
+        "--table-id".to_string(),
+        table_id,
+        "--record-id".to_string(),
+        id,
+        "--yes".to_string(),
+    ];
+
+    let output = match run_lark_cli(&config.profile, &args) {
+        Ok(o) => o,
+        Err(e) => return ApiResponse::err(e),
+    };
+
+    let resp: LarkResponse<serde_json::Value> = match serde_json::from_str(&output) {
+        Ok(r) => r,
+        Err(e) => return ApiResponse::err(format!("解析响应失败: {}\n{}", e, output)),
+    };
+
+    if !resp.ok {
+        return ApiResponse::err(
+            resp.error
+                .map(|e| e.message)
+                .unwrap_or_else(|| "删除纪念日失败".to_string()),
+        );
+    }
+
+    ApiResponse::ok(serde_json::json!({}))
+}
+
+#[tauri::command]
 fn toggle_collapse(state: tauri::State<AppState>, collapsed: bool) -> Result<(), String> {
     let window = state.main_window.lock().map_err(|e| e.to_string())?;
     if let Some(w) = window.as_ref() {
@@ -1677,6 +1932,9 @@ fn main() {
             update_favorite,
             delete_favorite,
             get_tags,
+            get_anniversaries,
+            create_anniversary,
+            delete_anniversary,
             toggle_collapse,
             set_always_on_top,
             minimize_window,

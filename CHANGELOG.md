@@ -20,6 +20,13 @@ single commit on `main`.
 
 ---
 
+## [1.2.2] - 2026-10-10
+
+### Fixed
+- **日历格子内容被截断。** 某天标签多（如农历+节日）时，`.cal-grid` 固定行高 `grid-auto-rows:1fr` + `.cal-cell` 的 `overflow:hidden` 会把底部文字裁掉一半。修复：行高改为 `minmax(min-content,1fr)`（格子按内容自适应撑高，网格本身可滚动），并移除 `overflow:hidden`，保证任何格子的字都不被截断。
+
+---
+
 ## [1.2.1] - 2026-10-09
 
 ### Fixed

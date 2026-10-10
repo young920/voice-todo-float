@@ -1156,6 +1156,35 @@ body.calendar-mode .btn-search { display: none; }
 .cal-yi { color: var(--cinnabar); }
 .cal-ji { color: var(--ink-muted); }
 
+/* Collapsible "完整黄历" (full almanac) section — collapsed by default */
+.cal-almanac {
+  margin-top: 6px;
+  border-top: 1px dashed var(--border-light);
+  padding-top: 4px;
+}
+.cal-almanac summary {
+  cursor: pointer;
+  font-size: 11px;
+  color: var(--ink-muted);
+  font-weight: 600;
+  user-select: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.cal-almanac summary:hover { color: var(--ink); }
+.cal-almanac summary::-webkit-details-marker { display: none; }
+.cal-almanac[open] summary .cal-almanac-caret { transform: rotate(180deg); }
+.cal-almanac-caret {
+  display: inline-block;
+  transition: transform 0.15s ease;
+  font-size: 10px;
+}
+.cal-almanac-body {
+  margin-top: 4px;
+  padding: 4px 0 0 2px;
+}
+
 /* Title dropdown */
 .title-dropdown {
   position: relative;
@@ -2775,13 +2804,62 @@ function pad2(n) { return String(n).padStart(2, '0'); }
 function dateKey(y, m, d) { return `${y}-${pad2(m + 1)}-${pad2(d)}`; }
 
 // ---- lunar-javascript helpers (农历/黄历/节气/宜忌) ----
+
+// Extra festivals NOT covered by lunar.js's festival tables (which only has
+// traditional Chinese lunar festivals). These are Western / modern / civic
+// holidays keyed by solar month-day. Format: 'M-D': [names...]
+const EXTRA_FESTIVALS = {
+  '1-1': ['元旦'],
+  '2-14': ['情人节'],
+  '3-8': ['妇女节'],
+  '3-12': ['植树节'],
+  '4-1': ['愚人节'],
+  '4-4': ['清明节'],
+  '5-1': ['劳动节'],
+  '5-4': ['青年节'],
+  '5-12': ['护士节'],
+  '6-1': ['儿童节'],
+  '7-1': ['建党节'],
+  '8-1': ['建军节'],
+  '9-10': ['教师节'],
+  '10-1': ['国庆节'],
+  '10-31': ['万圣节'],
+  '11-11': ['光棍节'],
+  '12-13': ['国家公祭日'],
+  '12-24': ['平安夜'],
+  '12-25': ['圣诞节'],
+  '12-31': ['跨年夜']
+};
+// Thanksgiving is the 4th Thursday of November (floating date).
+function getThanksgivingDate(y) {
+  // Nov 1 of year y
+  const nov1 = new Date(y, 10, 1);
+  // day-of-week of Nov 1 (0=Sun..6=Sat); 4th Thursday = first Thursday + 21 days
+  const firstThu = (11 - nov1.getDay() + 7) % 7; // days until first Thursday (0-6)
+  return new Date(y, 10, 1 + firstThu + 21); // 4th Thursday
+}
+// Returns extra festivals for a solar date (y, m=0-based month, d), or [] if none.
+function getExtraFestivals(y, m, d) {
+  const names = [];
+  const key = `${m + 1}-${d}`;
+  if (EXTRA_FESTIVALS[key]) names.push(...EXTRA_FESTIVALS[key]);
+  const thanks = getThanksgivingDate(y);
+  if (thanks.getMonth() === m && thanks.getDate() === d) names.push('感恩节');
+  return names;
+}
+
 // Returns lunar info for a solar date, or null if lunar.js isn't loaded.
 function getLunarInfo(y, m, d) {
   if (typeof Solar === 'undefined') return null;
   try {
-    const lunar = Solar.fromYmd(y, m + 1, d).getLunar();
+    const solar = Solar.fromYmd(y, m + 1, d);
+    const lunar = solar.getLunar();
     const jieQi = lunar.getJieQi() || '';
     const festivals = lunar.getFestivals().concat(lunar.getOtherFestivals());
+    // Merge in extra (Western/modern/civic) festivals
+    getExtraFestivals(y, m, d).forEach(n => { if (!festivals.includes(n)) festivals.push(n); });
+    let fotoYear = '';
+    try { fotoYear = String(lunar.getFoto().getYear()); } catch (e) {}
     return {
       lunarMonth: lunar.getMonthInChinese(),   // e.g. '八'
       lunarDay: lunar.getDayInChinese(),        // e.g. '廿九'
@@ -2791,7 +2869,22 @@ function getLunarInfo(y, m, d) {
       yi: lunar.getDayYi(),
       ji: lunar.getDayJi(),
       zhiXing: lunar.getZhiXing(),
-      festivals
+      festivals,
+      // ---- extended almanac (万年历) fields ----
+      pengZu: `${lunar.getPengZuGan()} ${lunar.getPengZuZhi()}`,   // 彭祖百忌
+      yearWuXing: lunar.getYearNaYin(),        // 年五行
+      monthWuXing: lunar.getMonthNaYin(),      // 月五行
+      dayWuXing: lunar.getDayNaYin(),          // 日五行
+      julianDay: solar.getJulianDay(),         // 儒略日
+      sha: lunar.getDaySha(),                  // 煞
+      xingZuo: solar.getXingZuo(),             // 星座
+      taiShen: lunar.getDayPositionTai(),      // 胎神占方
+      season: lunar.getSeason(),               // 季节
+      xiu: `${lunar.getXiu()}（${lunar.getXiuLuck()}）`, // 星宿
+      chong: lunar.getDayChongDesc(),          // 冲
+      liuYao: lunar.getLiuYao(),               // 六曜
+      fotoYear,                                // 佛历年
+      ganzhiDay: lunar.getDayInGanZhi()        // 日干支
     };
   } catch (e) {
     return null;
@@ -3061,6 +3154,23 @@ function renderDayTasks() {
           <span class="cal-detail-label">忌</span>
           <span class="cal-detail-yiji">${jiHtml || '<span class="cal-ji">无</span>'}</span>
         </div>
+        <details class="cal-almanac">
+          <summary>完整黄历 <span class="cal-almanac-caret">▾</span></summary>
+          <div class="cal-almanac-body">
+            <div class="cal-detail-row"><span class="cal-detail-label">生肖</span><span>${escapeHtml(lunar.shengXiao)}</span></div>
+            <div class="cal-detail-row"><span class="cal-detail-label">彭祖</span><span>${escapeHtml(lunar.pengZu)}</span></div>
+            <div class="cal-detail-row"><span class="cal-detail-label">五行</span><span>年 ${escapeHtml(lunar.yearWuXing)} · 月 ${escapeHtml(lunar.monthWuXing)} · 日 ${escapeHtml(lunar.dayWuXing)}</span></div>
+            <div class="cal-detail-row"><span class="cal-detail-label">星座</span><span>${escapeHtml(lunar.xingZuo)}</span></div>
+            <div class="cal-detail-row"><span class="cal-detail-label">星宿</span><span>${escapeHtml(lunar.xiu)}</span></div>
+            <div class="cal-detail-row"><span class="cal-detail-label">季节</span><span>${escapeHtml(lunar.season)}</span></div>
+            <div class="cal-detail-row"><span class="cal-detail-label">胎神</span><span>${escapeHtml(lunar.taiShen)}</span></div>
+            <div class="cal-detail-row"><span class="cal-detail-label">冲煞</span><span>冲 ${escapeHtml(lunar.chong)} · 煞${escapeHtml(lunar.sha)}</span></div>
+            <div class="cal-detail-row"><span class="cal-detail-label">六曜</span><span>${escapeHtml(lunar.liuYao)}</span></div>
+            <div class="cal-detail-row"><span class="cal-detail-label">值神</span><span>${escapeHtml(lunar.zhiXing)}</span></div>
+            ${lunar.fotoYear ? `<div class="cal-detail-row"><span class="cal-detail-label">佛历</span><span>${escapeHtml(lunar.fotoYear)}年</span></div>` : ''}
+            <div class="cal-detail-row"><span class="cal-detail-label">儒略日</span><span>${escapeHtml(lunar.julianDay)}</span></div>
+          </div>
+        </details>
       `;
     } else {
       detailEl.innerHTML = '';
@@ -3341,7 +3451,8 @@ function switchTab(tab) {
 }
 
 function escapeHtml(text) {
-  if (!text) return '';
+  if (text === undefined || text === null) return '';
+  text = String(text);
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
 }
 

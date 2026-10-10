@@ -965,6 +965,7 @@ body.calendar-mode .btn-search { display: none; }
 
 /* Calendar picker (month/year quick select) */
 .cal-picker {
+  display: none;
   position: absolute;
   top: 40px;
   left: 0;
@@ -1067,6 +1068,7 @@ body.calendar-mode .btn-search { display: none; }
 
 /* Holiday schedule panel (dropdown under sub-bar) */
 .cal-holiday-panel {
+  display: none;
   position: absolute;
   top: 74px;
   left: 0;
@@ -3001,6 +3003,11 @@ function getDayStatus(map, y, m, d, isOtherMonth) {
 function renderCalendar() {
   const grid = document.getElementById('calGrid');
   if (!grid) return;
+  // 进入日历渲染时强制隐藏所有浮层，防止出现空白面板
+  const pickerEl = document.getElementById('calPicker');
+  const panelEl = document.getElementById('calHolidayPanel');
+  if (pickerEl) pickerEl.style.display = 'none';
+  if (panelEl) panelEl.style.display = 'none';
   const yearBtn = document.getElementById('calYearBtn');
   const monthBtn = document.getElementById('calMonthBtn');
   if (yearBtn) yearBtn.textContent = `${calYear}年`;

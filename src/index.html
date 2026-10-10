@@ -661,12 +661,14 @@ body::before {
   justify-content: center;
   z-index: 2000;
   opacity: 0;
+  visibility: hidden;
   pointer-events: none;
-  transition: opacity 0.2s ease;
+  transition: opacity 0.2s ease, visibility 0.2s ease;
 }
 
 .loading-overlay.show {
   opacity: 1;
+  visibility: visible;
   pointer-events: auto;
 }
 
@@ -742,12 +744,13 @@ body::before {
   font-size: 13px;
   z-index: 3000;
   opacity: 0;
-  transition: opacity 0.2s ease;
+  visibility: hidden;
+  transition: opacity 0.2s ease, visibility 0.2s ease;
   pointer-events: none;
   white-space: nowrap;
 }
 
-.toast.show { opacity: 1; }
+.toast.show { opacity: 1; visibility: visible; }
 
 ::selection {
   background: rgba(184, 61, 47, 0.15);
@@ -1814,13 +1817,14 @@ function cleanTaskName(text) {
 let errorTimer = null;
 function showError(message) {
   const el = document.getElementById('errorBanner');
-  if (el) {
-    el.textContent = message;
-    el.classList.add('show');
-    // 自动消失，避免横条一直挂着
-    clearTimeout(errorTimer);
-    errorTimer = setTimeout(hideError, 4000);
-  }
+  if (!el) return;
+  // 空内容不显示，避免出现空白横条
+  if (!message || !String(message).trim()) return;
+  el.textContent = message;
+  el.classList.add('show');
+  // 自动消失，避免横条一直挂着
+  clearTimeout(errorTimer);
+  errorTimer = setTimeout(hideError, 4000);
 }
 
 function hideError() {
@@ -3526,20 +3530,26 @@ function normalizeUrl(url) {
 
 let loadingMinTimer = null;
 let loadingStartTime = 0;
+let loadingForceTimer = null;
 const MIN_LOADING_DURATION = 300;
+const MAX_LOADING_DURATION = 3000;
 
 function showLoading() {
   const el = document.getElementById('loadingOverlay');
   if (el) {
     clearTimeout(loadingMinTimer);
+    clearTimeout(loadingForceTimer);
     loadingStartTime = Date.now();
     el.classList.add('show');
+    // 强制超时关闭，防止遮罩一直挂着
+    loadingForceTimer = setTimeout(hideLoading, MAX_LOADING_DURATION);
   }
 }
 
 function hideLoading() {
   const el = document.getElementById('loadingOverlay');
   if (!el) return;
+  clearTimeout(loadingForceTimer);
   const elapsed = Date.now() - loadingStartTime;
   const remaining = MIN_LOADING_DURATION - elapsed;
   if (remaining > 0) {
@@ -3555,6 +3565,8 @@ function hideLoading() {
 function showToast(message) {
   const el = document.getElementById('toast');
   if (!el) return;
+  // 空内容不显示，避免出现空白提示框
+  if (!message || !String(message).trim()) return;
   el.textContent = message;
   el.classList.add('show');
   setTimeout(() => el.classList.remove('show'), 2000);

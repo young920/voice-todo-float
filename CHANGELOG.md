@@ -20,6 +20,15 @@ single commit on `main`.
 
 ---
 
+## [1.2.8] - 2026-10-10
+
+### Fixed
+- **启动时出现空白提示框。** 之前 `toast`（底部气泡）和 `loading-overlay`（全屏加载遮罩）初始只有 `opacity: 0` 隐藏，如果 CSS 加载异常或过渡动画卡住，会以「空白框」形式显示出来。现在给两者都加了 `visibility: hidden`，只有真正显示时才 `visibility: visible`，即使透明度失效也不会出现空白框。
+- **空内容提示保护。** `showToast` 和 `showError` 现在会忽略空字符串/纯空白内容，不再弹出空白气泡或空白横条。
+- **加载遮罩强制超时关闭。** `loadingOverlay` 最多显示 3 秒，即使某个异步加载卡住没调用 `hideLoading`，遮罩也会自动消失，不会一直盖住页面。
+
+---
+
 ## [1.2.7] - 2026-10-10
 
 ### Fixed

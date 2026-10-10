@@ -2798,10 +2798,10 @@ function getLunarInfo(y, m, d) {
   }
 }
 
-// Short lunar label for a cell: 初一 shows the month (e.g. '正月'), others show day (e.g. '廿九').
+// Short lunar label for a cell: 初一 shows "月 · 初一" (e.g. '九 · 初一'), others show day (e.g. '廿九').
 function lunarCellLabel(lunar) {
   if (!lunar) return '';
-  if (lunar.lunarDay === '初一') return lunar.lunarMonth;
+  if (lunar.lunarDay === '初一') return `${lunar.lunarMonth} · ${lunar.lunarDay}`;
   return lunar.lunarDay;
 }
 

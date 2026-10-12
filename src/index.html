@@ -2141,7 +2141,21 @@ async function loadAnniversaries() {
     console.error('Load anniversaries error:', error);
     anniversaries = [];
   }
-  renderCalendar();
+  // renderCalendar() 必须包在 try/catch 里：如果它抛异常，会 reject 整个
+  // loadAnniversaries，导致 saveAnniversary 里的 renderAnnList() 永远不执行，
+  // 表现为"保存后列表不刷新，点刷新按钮才出现"。这里兜底，保证调用方
+  // 的后续代码（renderAnnList）一定能执行。
+  try {
+    renderCalendar();
+  } catch (e) {
+    console.error('renderCalendar after loadAnniversaries error:', e);
+  }
+  // 列表也一并刷新，双保险：即使 renderCalendar 抛异常，弹窗列表也能更新。
+  try {
+    renderAnnList();
+  } catch (e) {
+    console.error('renderAnnList after loadAnniversaries error:', e);
+  }
 }
 
 function switchModule(module) {
@@ -3262,6 +3276,7 @@ function getDayStatus(map, y, m, d, isOtherMonth) {
 }
 
 function renderCalendar() {
+  try {
   const grid = document.getElementById('calGrid');
   if (!grid) return;
   // 进入日历渲染时强制隐藏所有浮层，防止出现空白面板
@@ -3435,6 +3450,9 @@ function renderCalendar() {
   });
 
   renderDayTasks();
+  } catch (e) {
+    console.error('renderCalendar error:', e);
+  }
 }
 
 // Show the tasks for the selected date (or today if none selected)
@@ -3771,6 +3789,12 @@ async function saveAnniversary() {
       if (nameEl) nameEl.value = '';
       if (noteEl) noteEl.value = '';
       showToast('已添加纪念日');
+      // 双保险：先把新记录手动插入本地数组，保证列表立刻显示新条目，
+      // 即使 get_anniversaries 因飞书写后读延迟读到旧数据，列表也不会空白。
+      // 随后 loadAnniversaries() 拉取完整列表（含真实 record_id）覆盖。
+      const newAnn = { id: 'local-' + Date.now(), name, date_type: dateType, month, day, ann_type: annType, note };
+      anniversaries = [...anniversaries.filter(a => a.name !== name), newAnn];
+      renderAnnList();
       await loadAnniversaries();
       renderAnnList();
     } else {

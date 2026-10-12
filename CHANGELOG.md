@@ -20,6 +20,16 @@ single commit on `main`.
 
 ---
 
+## [1.3.2] - 2026-10-12
+
+### Fixed
+- **添加纪念日后，列表不刷新（点刷新按钮才出现）。** 根因：`loadAnniversaries()` 里的 `renderCalendar()` 在 try/catch 外面，如果日历渲染抛异常，`loadAnniversaries` 会 reject，导致 `saveAnniversary` 里的 `renderAnnList()` 永远不执行——弹窗列表停留在旧数据，点标题栏刷新按钮才更新。修复：
+  - `renderCalendar()` 整体包 try/catch，任何渲染异常都被捕获并记录，不会中断主流程。
+  - `loadAnniversaries()` 里 `renderCalendar()` 和 `renderAnnList()` 都包 try/catch，保证调用方（保存/删除）的后续代码一定能执行。
+  - `saveAnniversary()` 保存成功后，先把新记录手动插入本地 `anniversaries` 数组并立即 `renderAnnList()`，再 `loadAnniversaries()` 拉取完整列表覆盖——即使飞书写后读偶发延迟读到旧数据，列表也能立刻显示新条目。
+
+---
+
 ## [1.3.1] - 2026-10-10
 
 ### Fixed

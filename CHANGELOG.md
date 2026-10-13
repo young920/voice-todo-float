@@ -24,6 +24,7 @@ single commit on `main`.
 
 ### Fixed
 - **启动时纪念日列表为空（打开纪念日弹窗显示"还没有纪念日"）。** 根因：`DOMContentLoaded` 初始化时没有调用 `loadAnniversaries()`，`anniversaries` 数组保持为空，只有点「↻ 刷新」按钮或保存/删除纪念日时才加载。修复：启动时即调用 `loadAnniversaries()` 加载飞书表里的纪念日数据（妈妈生日/爸爸生日等），打开纪念日弹窗和日历上的纪念日标签立即显示。
+- **日历节假日/补班标签不显示（如 10 月 10 日补班）。** 根因：节假日数据只从 `raw.githubusercontent.com` 拉取，该域名在国内网络经常被墙/超时，8 秒超时后缓存为空，日历上就没有「休/补」标签。修复：`loadHolidays` 增加 jsDelivr CDN（`cdn.jsdelivr.net`）作为备用数据源，GitHub raw 失败时自动切换，并更新 CSP 允许访问该域名。
 
 ---
 

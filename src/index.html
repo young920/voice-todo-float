@@ -3217,31 +3217,42 @@ function getAnniversariesForDate(y, m, d) {
   return result;
 }
 
-// Load holiday data for a year from holiday-cn (GitHub raw, backed by 国务院公告)
+// Load holiday data for a year from holiday-cn (backed by 国务院公告).
+// Primary source: GitHub raw. Fallback: jsDelivr CDN (cdn.jsdelivr.net is
+// far more reliable from mainland China, where raw.githubusercontent.com is
+// often blocked/times out — which previously left the calendar with no 休/补 tags).
 async function loadHolidays(year) {
   if (holidayCache[year]) return holidayCache[year];
-  const url = `https://raw.githubusercontent.com/NateScarlet/holiday-cn/master/${year}.json`;
-  try {
-    // AbortController timeout so a hung fetch can't leave the UI stuck on "加载中"
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 8000);
-    let resp;
+  const urls = [
+    `https://raw.githubusercontent.com/NateScarlet/holiday-cn/master/${year}.json`,
+    `https://cdn.jsdelivr.net/gh/NateScarlet/holiday-cn@master/${year}.json`,
+  ];
+  let lastErr = null;
+  for (const url of urls) {
     try {
-      resp = await fetch(url, { signal: controller.signal });
-    } finally {
-      clearTimeout(timer);
+      // AbortController timeout so a hung fetch can't leave the UI stuck on "加载中"
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 8000);
+      let resp;
+      try {
+        resp = await fetch(url, { signal: controller.signal });
+      } finally {
+        clearTimeout(timer);
+      }
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      const data = await resp.json();
+      const map = {};
+      (data.days || []).forEach(d => { map[d.date] = { name: d.name, isOffDay: d.isOffDay }; });
+      holidayCache[year] = map;
+      return map;
+    } catch (e) {
+      lastErr = e;
+      console.warn(`加载节假日数据失败（${url}）`, e);
     }
-    if (!resp.ok) throw new Error('HTTP ' + resp.status);
-    const data = await resp.json();
-    const map = {};
-    (data.days || []).forEach(d => { map[d.date] = { name: d.name, isOffDay: d.isOffDay }; });
-    holidayCache[year] = map;
-    return map;
-  } catch (e) {
-    console.warn('加载节假日数据失败', e);
-    holidayCache[year] = {}; // cache empty to avoid refetch spam
-    return holidayCache[year];
   }
+  console.warn('节假日数据所有源均失败', lastErr);
+  holidayCache[year] = {}; // cache empty to avoid refetch spam
+  return holidayCache[year];
 }
 
 // Preload holiday data for a broad range of years so every year's 休/补 tags

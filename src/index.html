@@ -2562,6 +2562,9 @@ function initModelTestModule() {
         if (!apiKey) { showToast('请填写 API Key'); return; }
         await invoke('add_gateway_cmd', { name, openaiBase, anthropicBase, apiKey });
         await loadModelTestConfig();
+        // 添加成功后自动选中新网关，让用户立即看到新网关配置
+        try { await invoke('select_gateway_cmd', { name }); } catch (e) { console.log(e); }
+        await loadModelTestConfig();
         closeGwModal();
         showToast('网关已添加');
       }

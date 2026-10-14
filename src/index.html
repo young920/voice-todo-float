@@ -2593,6 +2593,31 @@ function initModelTestModule() {
       return;
     }
     try {
+      // 若输入框配置与 active 网关不同，弹出命名弹窗保存为新网关
+      if (!mtInputMatchesActive(openaiBase, anthropicBase, apiKey)) {
+        const dup = mtGateways.find(g =>
+          g.openai_base === openaiBase && g.anthropic_base === anthropicBase && g.api_key === apiKey);
+        if (dup) {
+          // 已有相同配置网关，直接切过去
+          mtActiveGateway = dup.name;
+          try { await invoke('select_gateway_cmd', { name: dup.name }); } catch (e) {}
+          await loadModelTestConfig();
+          showToast('已切换到已有网关「' + dup.name + '」');
+          return;
+        }
+        // 弹出命名弹窗，预填当前地址/key
+        mtGwMode = 'add';
+        document.getElementById('mtGwName').value = '';
+        document.getElementById('mtGwOpenai').value = openaiBase;
+        document.getElementById('mtGwAnthropic').value = anthropicBase;
+        document.getElementById('mtGwKey').value = apiKey;
+        document.getElementById('mtGwModalTitle').textContent = '保存为新网关';
+        document.getElementById('mtGwModalOverlay').style.display = 'flex';
+        document.getElementById('mtGwName').focus();
+        showToast('检测到新配置，请命名后保存为新网关');
+        return;
+      }
+      // 与 active 网关一致，直接更新
       await invoke('save_model_test_config_cmd', { openaiBase, anthropicBase, apiKey });
       showToast('配置已保存');
     } catch (e) {
@@ -2603,6 +2628,56 @@ function initModelTestModule() {
   document.getElementById('mtTestBtn').onclick = runModelTest;
 }
 
+// 判断当前输入框配置是否与 active 网关一致
+function mtInputMatchesActive(openaiBase, anthropicBase, apiKey) {
+  const active = mtGateways.find(g => g.name === mtActiveGateway);
+  if (!active) return false;
+  return active.openai_base === openaiBase
+      && active.anthropic_base === anthropicBase
+      && active.api_key === apiKey;
+}
+
+// 从 base url 推断网关名（取域名主部分）
+function mtInferGatewayName(base) {
+  try {
+    const u = new URL(base);
+    const host = u.hostname;
+    // 取域名主部分，如 ai.qingxiaoyun.net → qingxiaoyun
+    const parts = host.split('.');
+    if (parts.length >= 2) return parts[parts.length - 2];
+    return host;
+  } catch (e) {
+    return '新网关';
+  }
+}
+
+// 测试前：若输入框配置与 active 网关不同，自动保存为独立网关，避免切走丢失
+async function mtAutoSaveAsGateway(openaiBase, anthropicBase, apiKey) {
+  if (mtInputMatchesActive(openaiBase, anthropicBase, apiKey)) return;
+  // 检查是否已存在相同配置的网关
+  const dup = mtGateways.find(g =>
+    g.openai_base === openaiBase && g.anthropic_base === anthropicBase && g.api_key === apiKey);
+  if (dup) {
+    // 已有相同配置网关，直接切过去
+    mtActiveGateway = dup.name;
+    try { await invoke('select_gateway_cmd', { name: dup.name }); } catch (e) {}
+    return;
+  }
+  // 生成网关名：优先用地址推断，若冲突则加序号
+  let name = mtInferGatewayName(openaiBase || anthropicBase) || '新网关';
+  let finalName = name, i = 2;
+  while (mtGateways.some(g => g.name === finalName)) {
+    finalName = name + i++;
+  }
+  try {
+    await invoke('add_gateway_cmd', { name: finalName, openaiBase, anthropicBase, apiKey });
+    await invoke('select_gateway_cmd', { name: finalName });
+    await loadModelTestConfig();
+  } catch (e) {
+    console.log('自动保存网关失败:', e.message);
+  }
+}
+
 async function runModelTest() {
   const openaiBase = document.getElementById('mtOpenaiBase').value.trim();
   const anthropicBase = document.getElementById('mtAnthropicBase').value.trim();
@@ -2611,6 +2686,8 @@ async function runModelTest() {
     showToast('请填写 OpenAI 地址和 API Key');
     return;
   }
+  // 测试前自动保存当前配置为独立网关，避免切走时数据丢失
+  await mtAutoSaveAsGateway(openaiBase, anthropicBase, apiKey);
   const btn = document.getElementById('mtTestBtn');
   btn.disabled = true;
   btn.textContent = '测试中...';

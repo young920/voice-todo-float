@@ -1890,7 +1890,8 @@ fn normalize_url(url: String) -> String {
 // ─────────────────────────────────────────────────────────────
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-struct ModelTestConfig {
+struct Gateway {
+    name: String,
     #[serde(rename = "openai_base")]
     openai_base: String,
     #[serde(rename = "anthropic_base")]
@@ -1899,12 +1900,22 @@ struct ModelTestConfig {
     api_key: String,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
+struct ModelTestConfig {
+    gateways: Vec<Gateway>,
+    active: String,
+}
+
 impl Default for ModelTestConfig {
     fn default() -> Self {
         Self {
-            openai_base: "https://ai.qingxiaoyun.net/v1".to_string(),
-            anthropic_base: "https://ai.qingxiaoyun.net".to_string(),
-            api_key: "sk-YaP0IMQvlU5Wu3kfZUgTxA9YnoQO0IwbQixMNcYzKYle2sET".to_string(),
+            gateways: vec![Gateway {
+                name: "清晓云".to_string(),
+                openai_base: "https://ai.qingxiaoyun.net/v1".to_string(),
+                anthropic_base: "https://ai.qingxiaoyun.net".to_string(),
+                api_key: "sk-YaP0IMQvlU5Wu3kfZUgTxA9YnoQO0IwbQixMNcYzKYle2sET".to_string(),
+            }],
+            active: "清晓云".to_string(),
         }
     }
 }
@@ -1916,7 +1927,27 @@ fn model_test_config_path() -> PathBuf {
 fn load_model_test_config() -> ModelTestConfig {
     let path = model_test_config_path();
     if let Ok(content) = std::fs::read_to_string(&path) {
+        // 优先解析新结构（gateways 列表）
         if let Ok(cfg) = serde_json::from_str::<ModelTestConfig>(&content) {
+            if !cfg.gateways.is_empty() {
+                return cfg;
+            }
+        }
+        // 兼容旧结构（单组 openai_base/anthropic_base/api_key）→ 迁移成默认网关
+        #[derive(Deserialize)]
+        struct Legacy {
+            openai_base: Option<String>,
+            anthropic_base: Option<String>,
+            api_key: Option<String>,
+        }
+        if let Ok(old) = serde_json::from_str::<Legacy>(&content) {
+            let mut cfg = ModelTestConfig::default();
+            if let Some(g) = cfg.gateways.first_mut() {
+                if let Some(v) = old.openai_base { g.openai_base = v; }
+                if let Some(v) = old.anthropic_base { g.anthropic_base = v; }
+                if let Some(v) = old.api_key { g.api_key = v; }
+            }
+            let _ = save_model_test_config(&cfg);
             return cfg;
         }
     }
@@ -1934,17 +1965,80 @@ fn get_model_test_config() -> ModelTestConfig {
     load_model_test_config()
 }
 
+// 保存当前选中网关的地址/key（更新配置）
 #[tauri::command]
 fn save_model_test_config_cmd(
     openai_base: String,
     anthropic_base: String,
     api_key: String,
 ) -> Result<(), String> {
-    let cfg = ModelTestConfig {
-        openai_base,
-        anthropic_base,
-        api_key,
-    };
+    let mut cfg = load_model_test_config();
+    let active = cfg.active.clone();
+    if let Some(g) = cfg.gateways.iter_mut().find(|g| g.name == active) {
+        g.openai_base = openai_base;
+        g.anthropic_base = anthropic_base;
+        g.api_key = api_key;
+    } else if let Some(g) = cfg.gateways.first_mut() {
+        g.openai_base = openai_base;
+        g.anthropic_base = anthropic_base;
+        g.api_key = api_key;
+    }
+    save_model_test_config(&cfg)
+}
+
+// 添加网关（name 已存在则覆盖）
+#[tauri::command]
+fn add_gateway_cmd(
+    name: String,
+    openai_base: String,
+    anthropic_base: String,
+    api_key: String,
+) -> Result<(), String> {
+    let name = name.trim().to_string();
+    if name.is_empty() {
+        return Err("网关名称不能为空".to_string());
+    }
+    let mut cfg = load_model_test_config();
+    if let Some(g) = cfg.gateways.iter_mut().find(|g| g.name == name) {
+        g.openai_base = openai_base;
+        g.anthropic_base = anthropic_base;
+        g.api_key = api_key;
+    } else {
+        cfg.gateways.push(Gateway {
+            name,
+            openai_base,
+            anthropic_base,
+            api_key,
+        });
+    }
+    save_model_test_config(&cfg)
+}
+
+// 删除网关（不能删最后一个）
+#[tauri::command]
+fn delete_gateway_cmd(name: String) -> Result<(), String> {
+    let mut cfg = load_model_test_config();
+    if cfg.gateways.len() <= 1 {
+        return Err("至少保留一个网关".to_string());
+    }
+    cfg.gateways.retain(|g| g.name != name);
+    // 如果删的是当前选中，切到第一个
+    if !cfg.gateways.iter().any(|g| g.name == cfg.active) {
+        if let Some(g) = cfg.gateways.first() {
+            cfg.active = g.name.clone();
+        }
+    }
+    save_model_test_config(&cfg)
+}
+
+// 切换当前选中网关
+#[tauri::command]
+fn select_gateway_cmd(name: String) -> Result<(), String> {
+    let mut cfg = load_model_test_config();
+    if !cfg.gateways.iter().any(|g| g.name == name) {
+        return Err(format!("网关不存在: {}", name));
+    }
+    cfg.active = name;
     save_model_test_config(&cfg)
 }
 
@@ -2285,6 +2379,9 @@ fn main() {
             open_external,
             get_model_test_config,
             save_model_test_config_cmd,
+            add_gateway_cmd,
+            delete_gateway_cmd,
+            select_gateway_cmd,
             test_models
         ])
         .run(tauri::generate_context!())

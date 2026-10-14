@@ -1724,6 +1724,173 @@ body.favorites-mode .btn-add { display: flex; }
   letter-spacing: 0.04em;
 }
 
+/* ── 模型测试模块 ── */
+#module-modeltest {
+  padding: 14px;
+  gap: 12px;
+  overflow-y: auto;
+}
+.mt-config {
+  background: var(--paper-light);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.mt-config-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.mt-label {
+  font-size: 12px;
+  color: var(--ink-light);
+  min-width: 96px;
+  letter-spacing: 0.02em;
+  flex-shrink: 0;
+}
+.mt-input {
+  flex: 1;
+  min-width: 0;
+  background: var(--paper);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 5px 8px;
+  font-size: 12px;
+  color: var(--ink);
+  font-family: inherit;
+  outline: none;
+}
+.mt-input:focus {
+  border-color: var(--cinnabar);
+}
+.mt-config-actions {
+  justify-content: space-between;
+  margin-top: 4px;
+}
+.mt-proto-switch {
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.mt-proto-btn {
+  background: var(--paper);
+  border: none;
+  padding: 4px 12px;
+  font-size: 12px;
+  color: var(--ink-light);
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s;
+}
+.mt-proto-btn.active {
+  background: var(--cinnabar);
+  color: var(--paper);
+}
+.mt-save-btn, .mt-test-btn {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 4px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s;
+  background: var(--paper);
+  color: var(--ink);
+}
+.mt-save-btn:hover {
+  border-color: var(--ink-muted);
+}
+.mt-test-btn {
+  background: var(--cinnabar);
+  border-color: var(--cinnabar);
+  color: var(--paper);
+}
+.mt-test-btn:hover {
+  opacity: 0.9;
+}
+.mt-test-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.mt-status {
+  font-size: 12px;
+  color: var(--ink-muted);
+  min-height: 18px;
+  letter-spacing: 0.02em;
+}
+.mt-results {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.mt-result-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--paper-light);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius);
+  padding: 8px 10px;
+  font-size: 12px;
+}
+.mt-result-row.ok { border-left: 3px solid #4a7c59; }
+.mt-result-row.empty { border-left: 3px solid #c9a961; }
+.mt-result-row.fail { border-left: 3px solid var(--cinnabar); }
+.mt-result-status {
+  width: 22px;
+  text-align: center;
+  flex-shrink: 0;
+}
+.mt-result-model {
+  flex: 1;
+  min-width: 0;
+  font-weight: 500;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mt-result-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--ink-muted);
+  font-size: 11px;
+  flex-shrink: 0;
+}
+.mt-score {
+  font-weight: 600;
+  color: var(--ink);
+  min-width: 24px;
+  text-align: right;
+}
+.mt-score.high { color: #4a7c59; }
+.mt-result-error {
+  font-size: 10px;
+  color: var(--cinnabar);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+.mt-recommend {
+  margin-top: 4px;
+  background: var(--cinnabar-light);
+  border: 1px solid var(--cinnabar);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  font-size: 13px;
+  color: var(--ink);
+  line-height: 1.5;
+}
+.mt-recommend strong {
+  color: var(--cinnabar);
+}
+
 </style>
 </head>
 <body>
@@ -1738,6 +1905,7 @@ body.favorites-mode .btn-add { display: flex; }
         <div class="title-menu-item active" data-module="tasks">一纸待办</div>
         <div class="title-menu-item" data-module="favorites">一纸锦囊</div>
         <div class="title-menu-item" data-module="calendar">日历</div>
+        <div class="title-menu-item" data-module="modeltest">模型测试</div>
       </div>
     </div>
     <span class="collapsed-icon">纸</span>
@@ -1860,6 +2028,35 @@ body.favorites-mode .btn-add { display: flex; }
         <div class="cal-day-tasks-header" id="calDayTasksHeader">当日待办</div>
         <div class="cal-day-tasks-body" id="calDayTasksBody"></div>
       </div>
+    </div>
+
+    <!-- 模型测试模块 -->
+    <div class="module-view" id="module-modeltest">
+      <div class="mt-config">
+        <div class="mt-config-row">
+          <label class="mt-label">OpenAI 地址</label>
+          <input type="text" class="mt-input" id="mtOpenaiBase" placeholder="https://ai.qingxiaoyun.net/v1">
+        </div>
+        <div class="mt-config-row">
+          <label class="mt-label">Anthropic 地址</label>
+          <input type="text" class="mt-input" id="mtAnthropicBase" placeholder="https://ai.qingxiaoyun.net">
+        </div>
+        <div class="mt-config-row">
+          <label class="mt-label">API Key</label>
+          <input type="password" class="mt-input" id="mtApiKey" placeholder="sk-...">
+        </div>
+        <div class="mt-config-row mt-config-actions">
+          <div class="mt-proto-switch">
+            <button class="mt-proto-btn active" data-protocol="openai">OpenAI</button>
+            <button class="mt-proto-btn" data-protocol="anthropic">Anthropic</button>
+          </div>
+          <button class="mt-save-btn" id="mtSaveConfig">保存配置</button>
+          <button class="mt-test-btn" id="mtTestBtn">开始测试</button>
+        </div>
+      </div>
+      <div class="mt-status" id="mtStatus"></div>
+      <div class="mt-results" id="mtResults"></div>
+      <div class="mt-recommend" id="mtRecommend"></div>
     </div>
   </div>
 </div>
@@ -2166,7 +2363,7 @@ function switchModule(module) {
   const activeModule = document.getElementById('module-' + module);
   if (activeModule) activeModule.classList.add('active');
   document.querySelectorAll('.title-menu-item').forEach(el => el.classList.toggle('active', el.getAttribute('data-module') === module));
-  const moduleTitles = { tasks: '一纸待办', favorites: '一纸锦囊', calendar: '日历' };
+  const moduleTitles = { tasks: '一纸待办', favorites: '一纸锦囊', calendar: '日历', modeltest: '模型测试' };
   document.getElementById('titleText').textContent = moduleTitles[module] || '一纸待办';
   document.getElementById('titleDropdown').classList.remove('open');
   
@@ -2180,8 +2377,149 @@ function switchModule(module) {
     renderFavorites();
   } else if (module === 'calendar') {
     renderCalendar();
+  } else if (module === 'modeltest') {
+    initModelTestModule();
   } else {
     renderTasks();
+  }
+}
+
+// ── 模型测试模块 ──
+let mtProtocol = 'openai';
+let mtConfigLoaded = false;
+
+async function loadModelTestConfig() {
+  try {
+    const cfg = await invoke('get_model_test_config');
+    if (cfg) {
+      document.getElementById('mtOpenaiBase').value = cfg.openai_base || '';
+      document.getElementById('mtAnthropicBase').value = cfg.anthropic_base || '';
+      document.getElementById('mtApiKey').value = cfg.api_key || '';
+    }
+  } catch (e) {
+    console.log('加载模型测试配置失败:', e.message);
+  }
+  mtConfigLoaded = true;
+}
+
+function initModelTestModule() {
+  if (!mtConfigLoaded) {
+    loadModelTestConfig();
+  }
+  // 绑定协议切换
+  document.querySelectorAll('.mt-proto-btn').forEach(btn => {
+    btn.onclick = () => {
+      mtProtocol = btn.dataset.protocol;
+      document.querySelectorAll('.mt-proto-btn').forEach(b => b.classList.toggle('active', b === btn));
+    };
+  });
+  // 保存配置
+  document.getElementById('mtSaveConfig').onclick = async () => {
+    const openaiBase = document.getElementById('mtOpenaiBase').value.trim();
+    const anthropicBase = document.getElementById('mtAnthropicBase').value.trim();
+    const apiKey = document.getElementById('mtApiKey').value.trim();
+    if (!openaiBase || !apiKey) {
+      showToast('请填写 OpenAI 地址和 API Key');
+      return;
+    }
+    try {
+      await invoke('save_model_test_config_cmd', { openaiBase, anthropicBase, apiKey });
+      showToast('配置已保存');
+    } catch (e) {
+      showError('保存配置失败: ' + e.message);
+    }
+  };
+  // 开始测试
+  document.getElementById('mtTestBtn').onclick = runModelTest;
+}
+
+async function runModelTest() {
+  const openaiBase = document.getElementById('mtOpenaiBase').value.trim();
+  const anthropicBase = document.getElementById('mtAnthropicBase').value.trim();
+  const apiKey = document.getElementById('mtApiKey').value.trim();
+  if (!openaiBase || !apiKey) {
+    showToast('请填写 OpenAI 地址和 API Key');
+    return;
+  }
+  const btn = document.getElementById('mtTestBtn');
+  btn.disabled = true;
+  btn.textContent = '测试中...';
+  const statusEl = document.getElementById('mtStatus');
+  const resultsEl = document.getElementById('mtResults');
+  const recEl = document.getElementById('mtRecommend');
+  statusEl.textContent = '正在拉取模型清单...';
+  resultsEl.innerHTML = '';
+  recEl.innerHTML = '';
+
+  try {
+    const results = await invoke('test_models', {
+      openaiBase, anthropicBase, apiKey, protocol: mtProtocol
+    });
+    renderModelResults(results);
+    statusEl.textContent = `测试完成：${results.length} 个模型，${results.filter(r => r.status === 'OK').length} 个可用`;
+  } catch (e) {
+    statusEl.textContent = '';
+    showError('测试失败: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '开始测试';
+  }
+}
+
+function statusIcon(status) {
+  switch (status) {
+    case 'OK': return '<span style="color:#4a7c59">🟢</span>';
+    case 'EMPTY': return '<span style="color:#c9a961">🟡</span>';
+    case 'SLOW': return '<span style="color:#c9a961">🟡</span>';
+    default: return '<span style="color:var(--cinnabar)">🔴</span>';
+  }
+}
+
+function statusLabel(status) {
+  switch (status) {
+    case 'OK': return '可用';
+    case 'EMPTY': return '空响应';
+    case 'SLOW': return '慢';
+    default: return '失败';
+  }
+}
+
+function renderModelResults(results) {
+  const resultsEl = document.getElementById('mtResults');
+  const recEl = document.getElementById('mtRecommend');
+  resultsEl.innerHTML = '';
+
+  const okModels = results.filter(r => r.status === 'OK');
+  const best = okModels[0];
+
+  results.forEach(r => {
+    const row = document.createElement('div');
+    row.className = 'mt-result-row ' + (r.status === 'OK' ? 'ok' : r.status === 'EMPTY' ? 'empty' : 'fail');
+    const ctx = r.context ? (r.context >= 1000000 ? (r.context/1000000).toFixed(1)+'M' : Math.round(r.context/1000)+'k') : '—';
+    const time = r.time_ms > 0 ? (r.time_ms/1000).toFixed(1)+'s' : '—';
+    row.innerHTML = `
+      <div class="mt-result-status">${statusIcon(r.status)}</div>
+      <div class="mt-result-model" title="${r.model}">${r.model}</div>
+      <div class="mt-result-meta">
+        <span title="上下文">${ctx}</span>
+        <span title="响应时间">${time}</span>
+        ${r.status === 'OK' ? `<span class="mt-score high">${r.score}</span>` : `<span class="mt-score">—</span>`}
+      </div>
+    `;
+    if (r.status !== 'OK' && r.error) {
+      const err = document.createElement('div');
+      err.className = 'mt-result-error';
+      err.textContent = r.error;
+      row.appendChild(err);
+    }
+    resultsEl.appendChild(row);
+  });
+
+  if (best) {
+    const ctx = best.context ? (best.context >= 1000000 ? (best.context/1000000).toFixed(1)+'M' : Math.round(best.context/1000)+'k') : '—';
+    recEl.innerHTML = `推荐最佳：<strong>${best.model}</strong>（综合分 ${best.score}，能力 ${best.capability}，速度 ${(best.time_ms/1000).toFixed(1)}s，上下文 ${ctx}）`;
+  } else if (results.length > 0) {
+    recEl.innerHTML = '当前协议下没有可用模型，请检查 key 或切换协议。';
   }
 }
 

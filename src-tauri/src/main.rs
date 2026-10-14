@@ -1885,6 +1885,348 @@ fn normalize_url(url: String) -> String {
     format!("https://{}", url)
 }
 
+// ─────────────────────────────────────────────────────────────
+// 模型测试模块
+// ─────────────────────────────────────────────────────────────
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+struct ModelTestConfig {
+    #[serde(rename = "openai_base")]
+    openai_base: String,
+    #[serde(rename = "anthropic_base")]
+    anthropic_base: String,
+    #[serde(rename = "api_key")]
+    api_key: String,
+}
+
+impl Default for ModelTestConfig {
+    fn default() -> Self {
+        Self {
+            openai_base: "https://ai.qingxiaoyun.net/v1".to_string(),
+            anthropic_base: "https://ai.qingxiaoyun.net".to_string(),
+            api_key: "sk-YaP0IMQvlU5Wu3kfZUgTxA9YnoQO0IwbQixMNcYzKYle2sET".to_string(),
+        }
+    }
+}
+
+fn model_test_config_path() -> PathBuf {
+    config_dir().join("model_test.json")
+}
+
+fn load_model_test_config() -> ModelTestConfig {
+    let path = model_test_config_path();
+    if let Ok(content) = std::fs::read_to_string(&path) {
+        if let Ok(cfg) = serde_json::from_str::<ModelTestConfig>(&content) {
+            return cfg;
+        }
+    }
+    ModelTestConfig::default()
+}
+
+fn save_model_test_config(cfg: &ModelTestConfig) -> Result<(), String> {
+    let path = model_test_config_path();
+    let content = serde_json::to_string_pretty(cfg).map_err(|e| e.to_string())?;
+    std::fs::write(&path, content).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn get_model_test_config() -> ModelTestConfig {
+    load_model_test_config()
+}
+
+#[tauri::command]
+fn save_model_test_config_cmd(
+    openai_base: String,
+    anthropic_base: String,
+    api_key: String,
+) -> Result<(), String> {
+    let cfg = ModelTestConfig {
+        openai_base,
+        anthropic_base,
+        api_key,
+    };
+    save_model_test_config(&cfg)
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+struct ModelInfo {
+    id: String,
+    #[serde(rename = "owned_by")]
+    owned_by: String,
+    #[serde(rename = "supported_endpoint_types")]
+    supported_endpoint_types: Vec<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+struct ModelsResponse {
+    data: Vec<ModelInfo>,
+}
+
+#[derive(Serialize, Debug)]
+struct ModelTestResult {
+    model: String,
+    status: String, // OK / SLOW / FAIL / TIMEOUT
+    time_ms: u64,
+    capability: i32,   // 能力分 0-100
+    speed: i32,        // 速度分 0-100
+    score: i32,        // 综合分 0-100
+    error: String,
+    protocol: String,  // openai / anthropic
+    context: i64,      // 上下文长度（硬编码）
+}
+
+// 硬编码能力评级表：模型 id 前缀 → (能力分, 上下文长度, 说明)
+fn capability_rating(model: &str) -> (i32, i64) {
+    let m = model.to_lowercase();
+    // 顶级推理模型
+    if m.contains("step-5") { return (95, 200000); }
+    if m.contains("step-3.7") { return (88, 128000); }
+    if m.contains("glm-5") { return (92, 128000); }
+    if m.contains("minimax-m3.1") { return (90, 200000); }
+    if m.contains("minimax-m3") { return (88, 128000); }
+    if m.contains("minimax-m2.7") { return (82, 128000); }
+    if m.contains("k3") { return (90, 200000); }
+    if m.contains("kimi-k2") { return (90, 409600); }
+    if m.contains("doubao-seed") { return (80, 128000); }
+    if m.contains("deepseek-v4") { return (85, 128000); }
+    if m.contains("qwen-3.6") { return (84, 128000); }
+    if m.contains("hy3") { return (86, 128000); }
+    if m.contains("agnes") { return (78, 128000); }
+    // 默认
+    (70, 128000)
+}
+
+// 拉取模型清单
+fn fetch_models(base: &str, key: &str, protocol: &str) -> Result<Vec<ModelInfo>, String> {
+    let client = reqwest::blocking::Client::builder()
+        .timeout(Duration::from_secs(15))
+        .build()
+        .map_err(|e| format!("创建 HTTP 客户端失败: {}", e))?;
+
+    let url = if protocol == "anthropic" {
+        format!("{}/v1/models", base)
+    } else {
+        format!("{}/models", base)
+    };
+
+    let mut req = client.get(&url).header("Authorization", format!("Bearer {}", key));
+    if protocol == "anthropic" {
+        req = req.header("anthropic-version", "2023-06-01");
+    }
+
+    let resp = req.send().map_err(|e| format!("请求模型列表失败: {}", e))?;
+    let status = resp.status();
+    let text = resp.text().map_err(|e| format!("读取响应失败: {}", e))?;
+
+    if !status.is_success() {
+        return Err(format!("模型列表接口返回 {}: {}", status, &text[..text.len().min(200)]));
+    }
+
+    let parsed: ModelsResponse =
+        serde_json::from_str(&text).map_err(|e| format!("解析模型列表失败: {}", e))?;
+    Ok(parsed.data)
+}
+
+// 探测单个模型（OpenAI 协议）
+fn probe_openai(base: &str, key: &str, model: &str) -> Result<(u128, bool), String> {
+    let client = reqwest::blocking::Client::builder()
+        .timeout(Duration::from_secs(30))
+        .build()
+        .map_err(|e| format!("创建 HTTP 客户端失败: {}", e))?;
+
+    let url = format!("{}/chat/completions", base);
+    let body = serde_json::json!({
+        "model": model,
+        "messages": [{"role": "user", "content": "计算 17×23 等于多少？只回答数字。"}],
+        "max_tokens": 200
+    });
+
+    let t0 = std::time::Instant::now();
+    let resp = client
+        .post(&url)
+        .header("Authorization", format!("Bearer {}", key))
+        .header("Content-Type", "application/json")
+        .json(&body)
+        .send()
+        .map_err(|e| format!("请求失败: {}", e))?;
+    let status = resp.status();
+    let text = resp.text().map_err(|e| format!("读取响应失败: {}", e))?;
+    let dt = t0.elapsed().as_millis();
+
+    if !status.is_success() {
+        let err = serde_json::from_str::<serde_json::Value>(&text)
+            .ok()
+            .and_then(|v| v.get("error").and_then(|e| e.get("message")).and_then(|m| m.as_str()).map(|s| s.to_string()))
+            .unwrap_or_else(|| format!("HTTP {}", status));
+        return Err(err);
+    }
+
+    let parsed: serde_json::Value = serde_json::from_str(&text).map_err(|e| format!("解析失败: {}", e))?;
+    let content = parsed
+        .get("choices")
+        .and_then(|c| c.get(0))
+        .and_then(|c| c.get("message"))
+        .and_then(|m| m.get("content"))
+        .and_then(|c| c.as_str())
+        .unwrap_or("");
+
+    Ok((dt, !content.trim().is_empty()))
+}
+
+// 探测单个模型（Anthropic 协议）
+fn probe_anthropic(base: &str, key: &str, model: &str) -> Result<(u128, bool), String> {
+    let client = reqwest::blocking::Client::builder()
+        .timeout(Duration::from_secs(30))
+        .build()
+        .map_err(|e| format!("创建 HTTP 客户端失败: {}", e))?;
+
+    let url = format!("{}/v1/messages", base);
+    let body = serde_json::json!({
+        "model": model,
+        "max_tokens": 200,
+        "messages": [{"role": "user", "content": "计算 17×23 等于多少？只回答数字。"}]
+    });
+
+    let t0 = std::time::Instant::now();
+    let resp = client
+        .post(&url)
+        .header("Authorization", format!("Bearer {}", key))
+        .header("Content-Type", "application/json")
+        .header("anthropic-version", "2023-06-01")
+        .json(&body)
+        .send()
+        .map_err(|e| format!("请求失败: {}", e))?;
+    let status = resp.status();
+    let text = resp.text().map_err(|e| format!("读取响应失败: {}", e))?;
+    let dt = t0.elapsed().as_millis();
+
+    if !status.is_success() {
+        let err = serde_json::from_str::<serde_json::Value>(&text)
+            .ok()
+            .and_then(|v| v.get("error").and_then(|e| e.get("message")).and_then(|m| m.as_str()).map(|s| s.to_string()))
+            .unwrap_or_else(|| format!("HTTP {}", status));
+        return Err(err);
+    }
+
+    let parsed: serde_json::Value = serde_json::from_str(&text).map_err(|e| format!("解析失败: {}", e))?;
+    let content = parsed
+        .get("content")
+        .and_then(|c| c.as_array())
+        .map(|arr| {
+            arr.iter()
+                .filter(|b| b.get("type").and_then(|t| t.as_str()) == Some("text"))
+                .filter_map(|b| b.get("text").and_then(|t| t.as_str()))
+                .collect::<Vec<_>>()
+                .join("")
+        })
+        .unwrap_or_default();
+
+    Ok((dt, !content.trim().is_empty()))
+}
+
+// 过滤掉非聊天模型
+fn is_chat_model(m: &ModelInfo) -> bool {
+    let id = m.id.to_lowercase();
+    if id.contains("embedding") || id.contains("codex") { return false; }
+    if id.contains("hailuo") || id.contains("image") || id.contains("tts") { return false; }
+    if m.owned_by.contains("task plugin") { return false; }
+    true
+}
+
+#[tauri::command]
+fn test_models(
+    openai_base: String,
+    anthropic_base: String,
+    api_key: String,
+    protocol: String,
+) -> Result<Vec<ModelTestResult>, String> {
+    let protocol = if protocol == "anthropic" { "anthropic" } else { "openai" };
+    let base = if protocol == "anthropic" { &anthropic_base } else { &openai_base };
+
+    // 拉取模型清单
+    let models = fetch_models(base, &api_key, protocol)?;
+
+    // 过滤聊天模型
+    let chat_models: Vec<&ModelInfo> = models.iter().filter(|m| is_chat_model(m)).collect();
+
+    // 并发探测
+    let mut results: Vec<ModelTestResult> = Vec::new();
+    let handles: Vec<_> = chat_models
+        .iter()
+        .map(|m| {
+            let base = base.clone();
+            let key = api_key.clone();
+            let model_id = m.id.clone();
+            let protocol = protocol.to_string();
+            std::thread::spawn(move || {
+                let probe = if protocol == "anthropic" {
+                    probe_anthropic(&base, &key, &model_id)
+                } else {
+                    probe_openai(&base, &key, &model_id)
+                };
+
+                let (capability, context) = capability_rating(&model_id);
+
+                match probe {
+                    Ok((dt, has_content)) => {
+                        let time_ms = dt as u64;
+                        // 速度分：<1s=100, 1-2s=90, 2-3s=80, 3-5s=60, >5s=40
+                        let speed = if time_ms < 1000 { 100 }
+                            else if time_ms < 2000 { 90 }
+                            else if time_ms < 3000 { 80 }
+                            else if time_ms < 5000 { 60 }
+                            else { 40 };
+                        // 综合分：能力 50% + 速度 30% + 可用性 20%
+                        let score = (capability * 50 + speed * 30 + 100 * 20) / 100;
+                        ModelTestResult {
+                            model: model_id,
+                            status: if has_content { "OK" } else { "EMPTY" }.to_string(),
+                            time_ms,
+                            capability,
+                            speed,
+                            score,
+                            error: String::new(),
+                            protocol: protocol.clone(),
+                            context,
+                        }
+                    }
+                    Err(e) => {
+                        ModelTestResult {
+                            model: model_id,
+                            status: "FAIL".to_string(),
+                            time_ms: 0,
+                            capability,
+                            speed: 0,
+                            score: 0,
+                            error: e,
+                            protocol: protocol.clone(),
+                            context,
+                        }
+                    }
+                }
+            })
+        })
+        .collect();
+
+    for h in handles {
+        results.push(h.join().unwrap_or_else(|_| ModelTestResult {
+            model: "unknown".to_string(),
+            status: "FAIL".to_string(),
+            time_ms: 0,
+            capability: 0,
+            speed: 0,
+            score: 0,
+            error: "线程异常".to_string(),
+            protocol: protocol.to_string(),
+            context: 0,
+        }));
+    }
+
+    // 按综合分排序
+    results.sort_by(|a, b| b.score.cmp(&a.score));
+    Ok(results)
+}
+
 fn main() {
     log("应用启动");
     let config = match ensure_config() {
@@ -1940,7 +2282,10 @@ fn main() {
             minimize_window,
             close_window,
             start_dragging,
-            open_external
+            open_external,
+            get_model_test_config,
+            save_model_test_config_cmd,
+            test_models
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

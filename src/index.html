@@ -1829,7 +1829,7 @@ body.favorites-mode .btn-add { display: flex; }
 }
 .mt-result-row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px;
   background: var(--paper-light);
   border: 1px solid var(--border-light);
@@ -1844,15 +1844,16 @@ body.favorites-mode .btn-add { display: flex; }
   width: 22px;
   text-align: center;
   flex-shrink: 0;
+  margin-top: 1px;
 }
 .mt-result-model {
   flex: 1;
   min-width: 0;
   font-weight: 500;
   color: var(--ink);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  word-break: break-all;
+  overflow-wrap: anywhere;
+  line-height: 1.4;
 }
 .mt-result-meta {
   display: flex;
@@ -1861,6 +1862,7 @@ body.favorites-mode .btn-add { display: flex; }
   color: var(--ink-muted);
   font-size: 11px;
   flex-shrink: 0;
+  margin-top: 1px;
 }
 .mt-score {
   font-weight: 600;
@@ -2367,6 +2369,12 @@ function switchModule(module) {
   document.getElementById('titleText').textContent = moduleTitles[module] || '一纸待办';
   document.getElementById('titleDropdown').classList.remove('open');
   
+  // 任务模块专属的筛选标签栏和搜索面板：仅 tasks 模块显示
+  const tabBar = document.querySelector('.tab-bar');
+  const searchPanel = document.getElementById('searchPanel');
+  if (tabBar) tabBar.style.display = (module === 'tasks') ? '' : 'none';
+  if (searchPanel) searchPanel.style.display = (module === 'tasks') ? '' : 'none';
+  
   // Sync search/add state visibility per module
   const taskSearchPanel = document.getElementById('searchPanel');
   const favSearchPanel = document.getElementById('favSearchPanel');
@@ -2484,6 +2492,42 @@ function statusLabel(status) {
   }
 }
 
+// 把英文报错翻译成中文说明
+function translateError(err) {
+  if (!err) return '';
+  const e = String(err).toLowerCase();
+  // 订阅 / 配额 / 权限
+  if (e.includes('subscription') || e.includes('plan') || e.includes('quota') || e.includes('billing') || e.includes('credit')) {
+    return '该模型需要订阅/配额，当前账号不可用';
+  }
+  if (e.includes('permission') || e.includes('forbidden') || e.includes('unauthorized') || e.includes('access denied') || e.includes('not allowed')) {
+    return '无访问权限，请检查 API Key 权限';
+  }
+  if (e.includes('invalid api key') || e.includes('authentication') || e.includes('auth') || e.includes('incorrect api key')) {
+    return 'API Key 无效或已过期';
+  }
+  if (e.includes('rate limit') || e.includes('too many request') || e.includes('429')) {
+    return '请求过于频繁，请稍后再试';
+  }
+  if (e.includes('model not found') || e.includes('no such model') || e.includes('does not exist') || e.includes('unknown model')) {
+    return '该模型不存在或已下线';
+  }
+  if (e.includes('context length') || e.includes('token limit') || e.includes('maximum context') || e.includes('too many tokens')) {
+    return '超出上下文长度限制';
+  }
+  if (e.includes('timeout') || e.includes('timed out')) {
+    return '请求超时';
+  }
+  if (e.includes('overloaded') || e.includes('busy') || e.includes('temporarily unavailable') || e.includes('server error') || e.includes('500') || e.includes('503')) {
+    return '服务暂时不可用，请稍后重试';
+  }
+  // 截断过长的英文错误，保留前 60 字符
+  if (err.length > 80) {
+    return err.slice(0, 77) + '...';
+  }
+  return err;
+}
+
 function renderModelResults(results) {
   const resultsEl = document.getElementById('mtResults');
   const recEl = document.getElementById('mtRecommend');
@@ -2509,7 +2553,7 @@ function renderModelResults(results) {
     if (r.status !== 'OK' && r.error) {
       const err = document.createElement('div');
       err.className = 'mt-result-error';
-      err.textContent = r.error;
+      err.textContent = translateError(r.error);
       row.appendChild(err);
     }
     resultsEl.appendChild(row);

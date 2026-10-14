@@ -2031,6 +2031,34 @@ fn delete_gateway_cmd(name: String) -> Result<(), String> {
     save_model_test_config(&cfg)
 }
 
+// 重命名网关
+#[tauri::command]
+fn rename_gateway_cmd(old_name: String, new_name: String) -> Result<(), String> {
+    let new_name = new_name.trim().to_string();
+    let old_name = old_name.trim().to_string();
+    if new_name.is_empty() {
+        return Err("网关名称不能为空".to_string());
+    }
+    if new_name == old_name {
+        return Ok(());
+    }
+    let mut cfg = load_model_test_config();
+    if !cfg.gateways.iter().any(|g| g.name == old_name) {
+        return Err(format!("网关不存在: {}", old_name));
+    }
+    if cfg.gateways.iter().any(|g| g.name == new_name) {
+        return Err(format!("网关名称已存在: {}", new_name));
+    }
+    if let Some(g) = cfg.gateways.iter_mut().find(|g| g.name == old_name) {
+        g.name = new_name.clone();
+    }
+    // 如果改的是当前选中，active 跟着改
+    if cfg.active == old_name {
+        cfg.active = new_name;
+    }
+    save_model_test_config(&cfg)
+}
+
 // 切换当前选中网关
 #[tauri::command]
 fn select_gateway_cmd(name: String) -> Result<(), String> {
@@ -2381,6 +2409,7 @@ fn main() {
             save_model_test_config_cmd,
             add_gateway_cmd,
             delete_gateway_cmd,
+            rename_gateway_cmd,
             select_gateway_cmd,
             test_models
         ])

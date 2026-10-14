@@ -2058,7 +2058,7 @@ body.favorites-mode .btn-add { display: flex; }
       </div>
       <div class="mt-status" id="mtStatus"></div>
       <div class="mt-results" id="mtResults"></div>
-      <div class="mt-recommend" id="mtRecommend"></div>
+      <div class="mt-recommend" id="mtRecommend" style="display:none;"></div>
     </div>
   </div>
 </div>
@@ -2458,6 +2458,7 @@ async function runModelTest() {
   statusEl.textContent = '正在拉取模型清单...';
   resultsEl.innerHTML = '';
   recEl.innerHTML = '';
+  recEl.style.display = 'none';
 
   try {
     const results = await invoke('test_models', {
@@ -2562,8 +2563,12 @@ function renderModelResults(results) {
   if (best) {
     const ctx = best.context ? (best.context >= 1000000 ? (best.context/1000000).toFixed(1)+'M' : Math.round(best.context/1000)+'k') : '—';
     recEl.innerHTML = `推荐最佳：<strong>${best.model}</strong>（综合分 ${best.score}，能力 ${best.capability}，速度 ${(best.time_ms/1000).toFixed(1)}s，上下文 ${ctx}）`;
+    recEl.style.display = '';
   } else if (results.length > 0) {
     recEl.innerHTML = '当前协议下没有可用模型，请检查 key 或切换协议。';
+    recEl.style.display = '';
+  } else {
+    recEl.style.display = 'none';
   }
 }
 

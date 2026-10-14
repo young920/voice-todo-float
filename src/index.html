@@ -2095,6 +2095,27 @@ body.favorites-mode .btn-add { display: flex; }
       <div class="mt-results" id="mtResults"></div>
       <div class="mt-recommend" id="mtRecommend" style="display:none;"></div>
     </div>
+
+    <!-- 网关表单弹窗 -->
+    <div class="ann-modal-overlay" id="mtGwModalOverlay" style="display:none;">
+      <div class="ann-modal">
+        <div class="ann-modal-header">
+          <span class="ann-modal-title" id="mtGwModalTitle">添加网关</span>
+          <button class="ann-modal-close" id="mtGwModalClose" title="关闭">×</button>
+        </div>
+        <div class="ann-modal-body">
+          <div class="ann-form" id="mtGwForm">
+            <input class="ann-input" id="mtGwName" type="text" placeholder="网关名称（如：清晓云）" maxlength="30" />
+            <input class="ann-input" id="mtGwOpenai" type="text" placeholder="OpenAI 地址（可选，如 https://xxx/v1）" />
+            <input class="ann-input" id="mtGwAnthropic" type="text" placeholder="Anthropic 地址（可选，如 https://xxx）" />
+            <input class="ann-input" id="mtGwKey" type="password" placeholder="API Key" />
+            <div class="ann-form-actions">
+              <button class="ann-btn ann-btn-primary" id="mtGwSaveBtn">保存</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -2490,21 +2511,35 @@ function initModelTestModule() {
       try { await invoke('select_gateway_cmd', { name }); } catch (e) { console.log(e); }
     }
   };
-  // 添加网关
+  // 添加网关：弹出表单，分别填名称/OpenAI地址/Anthropic地址/API Key
   document.getElementById('mtAddGateway').onclick = () => {
-    const name = prompt('网关名称（如：清晓云）');
-    if (!name || !name.trim()) return;
-    const openaiBase = document.getElementById('mtOpenaiBase').value.trim();
-    const anthropicBase = document.getElementById('mtAnthropicBase').value.trim();
-    const apiKey = document.getElementById('mtApiKey').value.trim();
-    if (!openaiBase || !apiKey) { showToast('请先填写 OpenAI 地址和 API Key'); return; }
-    (async () => {
-      try {
-        await invoke('add_gateway_cmd', { name: name.trim(), openaiBase, anthropicBase, apiKey });
-        await loadModelTestConfig();
-        showToast('网关已添加');
-      } catch (e) { showError('添加网关失败: ' + e.message); }
-    })();
+    document.getElementById('mtGwName').value = '';
+    document.getElementById('mtGwOpenai').value = '';
+    document.getElementById('mtGwAnthropic').value = '';
+    document.getElementById('mtGwKey').value = '';
+    document.getElementById('mtGwModalTitle').textContent = '添加网关';
+    document.getElementById('mtGwModalOverlay').style.display = 'flex';
+    document.getElementById('mtGwName').focus();
+  };
+  // 网关表单：关闭
+  const closeGwModal = () => { document.getElementById('mtGwModalOverlay').style.display = 'none'; };
+  document.getElementById('mtGwModalClose').onclick = closeGwModal;
+  document.getElementById('mtGwModalOverlay').onclick = (e) => { if (e.target === e.currentTarget) closeGwModal(); };
+  // 网关表单：保存
+  document.getElementById('mtGwSaveBtn').onclick = async () => {
+    const name = document.getElementById('mtGwName').value.trim();
+    const openaiBase = document.getElementById('mtGwOpenai').value.trim();
+    const anthropicBase = document.getElementById('mtGwAnthropic').value.trim();
+    const apiKey = document.getElementById('mtGwKey').value.trim();
+    if (!name) { showToast('请填写网关名称'); return; }
+    if (!openaiBase && !anthropicBase) { showToast('请至少填写一个地址（OpenAI 或 Anthropic）'); return; }
+    if (!apiKey) { showToast('请填写 API Key'); return; }
+    try {
+      await invoke('add_gateway_cmd', { name, openaiBase, anthropicBase, apiKey });
+      await loadModelTestConfig();
+      closeGwModal();
+      showToast('网关已添加');
+    } catch (e) { showError('添加网关失败: ' + e.message); }
   };
   // 删除网关
   document.getElementById('mtDelGateway').onclick = () => {
